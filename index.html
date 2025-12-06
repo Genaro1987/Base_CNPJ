@@ -2212,20 +2212,28 @@ const rotaCheckNaoAtendidos = document.getElementById('rota-check-nao-atendidos'
 
     function rotaDebug(label, payload) {
         if (!DEBUG_ROTA) return;
-        if (console && console.groupCollapsed) {
-            console.groupCollapsed(`%c[ROTA-DEBUG] ${label}`, 'color:#b91c1c;font-weight:bold;');
-            if (payload !== undefined) {
-                console.log(payload);
-            }
-            console.groupEnd();
-        } else {
+        try {
+            console.log(
+                '[ROTA-DEBUG]',
+                label,
+                payload !== undefined ? JSON.parse(JSON.stringify(payload)) : ''
+            );
+        } catch (e) {
             console.log('[ROTA-DEBUG]', label, payload);
         }
     }
 
     function rotaWarn(label, payload) {
         if (!DEBUG_ROTA) return;
-        console.warn('[ROTA-WARN]', label, payload);
+        try {
+            console.warn(
+                '[ROTA-WARN]',
+                label,
+                payload !== undefined ? JSON.parse(JSON.stringify(payload)) : ''
+            );
+        } catch (e) {
+            console.warn('[ROTA-WARN]', label, payload);
+        }
     }
 
     function rotaError(label, error, extra) {
@@ -3055,16 +3063,23 @@ function atualizarResultados(dados) {
       // Limpa o estado de rota baseado em pesquisa anterior
       estadoRota.dadosOriginais = listaEmpresas;
       rotaDebug('Sincronizar com Lista CNPJ', {
-          totalEmpresas: Array.isArray(listaEmpresas) ? listaEmpresas.length : 0,
-          exemploPrimeiro: Array.isArray(listaEmpresas) && listaEmpresas.length > 0
-              ? {
-                  cnpj: listaEmpresas[0].cnpj,
-                  razao: listaEmpresas[0].razao || listaEmpresas[0].razao_social,
-                  endereco: listaEmpresas[0].endereco,
-                  bairro: listaEmpresas[0].bairro,
-                  cidade: listaEmpresas[0].cidade
-              }
-              : null
+        totalEmpresas: Array.isArray(estadoRota.dadosOriginais) ? estadoRota.dadosOriginais.length : 0,
+        cidadesUnicas: Array.from(
+          new Set(
+            (estadoRota.dadosOriginais || [])
+              .map(i => i.cidade)
+              .filter(Boolean)
+          )
+        ),
+        exemploPrimeiro: Array.isArray(estadoRota.dadosOriginais) && estadoRota.dadosOriginais.length > 0
+          ? {
+              cnpj: estadoRota.dadosOriginais[0].cnpj,
+              razao: estadoRota.dadosOriginais[0].razao || estadoRota.dadosOriginais[0].razao_social,
+              endereco: estadoRota.dadosOriginais[0].endereco,
+              bairro: estadoRota.dadosOriginais[0].bairro,
+              cidade: estadoRota.dadosOriginais[0].cidade
+            }
+          : null
       });
       estadoRota.cidadesPrioridade = [];
       estadoRota.bairrosPrioridade = [];
@@ -6890,7 +6905,7 @@ function popularSelectCidades() {
 
     rotaDebug('popularSelectCidades', {
         totalDadosOriginais: Array.isArray(estadoRota.dadosOriginais) ? estadoRota.dadosOriginais.length : 0,
-        cidadesEncontradas: listaSorted
+        cidadesDoSelect: listaSorted
     });
 
     rotaSelectCidade.innerHTML = '<option value="">Selecione para adicionar...</option>';
@@ -7037,13 +7052,17 @@ function popularSelectBairros() {
 
     rotaDebug('popularSelectBairros - entrada', {
         totalBase: base.length,
-        cidadesAtivas
+        cidadesAtivas,
+        amostraCidadesBase: base.slice(0, 10).map(i => i.cidade)
     });
 
     rotaSelectBairro.innerHTML = '<option value="">Selecione para priorizar...</option>';
 
     if (!base.length || !cidadesAtivas.length) {
-        rotaWarn('popularSelectBairros - sem base ou sem cidades ativas', { totalBase: base.length, cidadesAtivas });
+        rotaWarn('popularSelectBairros - sem base ou sem cidades ativas', {
+            totalBase: base.length,
+            cidadesAtivas
+        });
         rotaSelectBairro.disabled = true;
         return;
     }
@@ -7061,7 +7080,11 @@ function popularSelectBairros() {
     let listaSorted = Array.from(bairrosUnicos).sort();
     if (!listaSorted.length) {
         rotaWarn('popularSelectBairros - nenhuma combinação encontrada, usando OUTROS', {
-            cidadesAtivas
+            cidadesAtivas,
+            exemploBase: base.slice(0, 5).map(i => ({
+                cidade: i.cidade,
+                bairro: i.bairro
+            }))
         });
         listaSorted = ['OUTROS'];
     }
@@ -7182,6 +7205,7 @@ function renderizarTagsBairros() {
 // 6. Motor de Filtragem Principal e Renderização da Tabela
 function aplicarFiltrosGerais() {
     try {
+        // 1. Fonte
         let fonteSelecionada = 'pesquisa';
         for (const radio of rotaInputsFonte) {
             if (radio.checked) fonteSelecionada = radio.value;
@@ -7203,7 +7227,7 @@ function aplicarFiltrosGerais() {
             bairrosPrioridade: estadoRota.bairrosPrioridade
         });
 
-        // --- Filtro por status (se estiver usando cobertura) ---
+        // 2. Filtro por status (cobertura)
         filtrados = filtrados.filter(item => {
             if (fonteSelecionada === 'cobertura') {
                 if (item.encontrado && !incluirAtendidos) return false;
@@ -7212,16 +7236,14 @@ function aplicarFiltrosGerais() {
             return true;
         });
 
-        // --- Filtro por cidade ---
+        // 3. Filtro por cidade
         if (estadoRota.cidadesPrioridade && estadoRota.cidadesPrioridade.length > 0) {
             filtrados = filtrados.filter(i =>
                 estadoRota.cidadesPrioridade.includes(i.cidade)
             );
-        } else if (fonteSelecionada === 'cobertura') {
-            filtrados = [];
         }
 
-        // --- Filtro por bairro ---
+        // 4. Filtro por bairro
         if (estadoRota.bairrosPrioridade && estadoRota.bairrosPrioridade.length > 0) {
             filtrados = filtrados.filter(i =>
                 estadoRota.bairrosPrioridade.includes(i.bairro)
@@ -7229,10 +7251,12 @@ function aplicarFiltrosGerais() {
         }
 
         rotaDebug('aplicarFiltrosGerais - posFiltros', {
-            totalFiltrados: filtrados.length
+            totalFiltrados: filtrados.length,
+            amostraCidades: Array.from(new Set(filtrados.map(i => i.cidade))).slice(0, 10),
+            amostraBairros: Array.from(new Set(filtrados.map(i => i.bairro))).slice(0, 10)
         });
 
-        // --- Ordenação (ajuste se necessário, mas sempre com fallback de string) ---
+        // 5. Ordenação simples e segura
         filtrados.sort((a, b) => {
             const cidadesPrio = Array.isArray(estadoRota.cidadesPrioridade)
                 ? estadoRota.cidadesPrioridade
@@ -7279,7 +7303,7 @@ function aplicarFiltrosGerais() {
         renderizarTabelaRota();
     } catch (err) {
         rotaError('aplicarFiltrosGerais - exception', err, {
-            dadosOriginaisExemplo: Array.isArray(estadoRota.dadosOriginais) && estadoRota.dadosOriginais.length > 0
+            exemploDadosOriginais: Array.isArray(estadoRota.dadosOriginais) && estadoRota.dadosOriginais.length > 0
                 ? estadoRota.dadosOriginais[0]
                 : null
         });
