@@ -142,6 +142,57 @@
       transition: background 0.2s ease, box-shadow 0.2s ease, color 0.2s ease;
     }
 
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.35rem 0.6rem;
+      border-radius: 10px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      line-height: 1.2;
+      margin-bottom: 0.35rem;
+    }
+
+    .status-ok {
+      background: #ecfdf3;
+      color: #15803d;
+      border: 1px solid #bbf7d0;
+    }
+
+    .status-sem-mapa {
+      background: #fff7ed;
+      color: #c2410c;
+      border: 1px solid #fed7aa;
+    }
+
+    .status-sem-mapa-incluido {
+      background: #eef2ff;
+      color: #4338ca;
+      border: 1px solid #c7d2fe;
+    }
+
+    .status-pendente {
+      background: #fef2f2;
+      color: #b91c1c;
+      border: 1px solid #fecdd3;
+    }
+
+    .rota-toggle-manual {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.82rem;
+      color: var(--gf2-muted);
+      font-weight: 600;
+    }
+
+    .rota-toggle-manual input[type="checkbox"] {
+      accent-color: var(--gf2-red);
+      width: 15px;
+      height: 15px;
+    }
+
     .tab[disabled],
     .tab[aria-disabled="true"] {
       opacity: 0.45;
@@ -7008,7 +7059,9 @@ function atualizarAbaRota() {
                 validado: !!(item.lat && parseFloat(item.lat) !== 0),
                 encontrado: Object.prototype.hasOwnProperty.call(item, 'encontrado')
                     ? item.encontrado
-                    : true
+                    : true,
+                semCoordenadas: false,
+                forcarInclusaoRota: false
             };
         });
 
@@ -7495,14 +7548,21 @@ function obterLimiteClientesPorRota() {
 function gerarRotasInteligentes() {
     const limitePorRota = obterLimiteClientesPorRota(); // limite configurável pelo usuário
 
-    // Filtra apenas clientes com coordenadas válidas
-    const clientesValidos = estadoRota.clientesFiltrados.filter(c => c.validado && c.lat && c.lon);
+    // Base de clientes elegíveis para rota:
+    // - entra automaticamente se validado === true
+    // - ou se o usuário marcou forcarInclusaoRota === true
+    const clientesBase = Array.isArray(estadoRota.clientesFiltrados)
+        ? estadoRota.clientesFiltrados.filter(c => {
+            if (c.forcarInclusaoRota) return true;
+            return c.validado === true;
+        })
+        : [];
 
     // Mapeia rotas por nome (para agrupar clientes com mesmo nome de rota)
     const rotasPorNome = new Map();
 
     // Primeiro, agrupa clientes que já têm nome de rota definido
-    clientesValidos.forEach(cliente => {
+    clientesBase.forEach(cliente => {
         if (cliente.rotaNome && cliente.rotaNome.trim() !== '') {
             const nomeRota = cliente.rotaNome.trim().toUpperCase();
 
@@ -7520,7 +7580,7 @@ function gerarRotasInteligentes() {
     });
 
     // Clientes sem nome de rota definido - agrupa automaticamente
-    const clientesSemRota = clientesValidos.filter(c => !c.rotaNome || c.rotaNome.trim() === '');
+    const clientesSemRota = clientesBase.filter(c => !c.rotaNome || c.rotaNome.trim() === '');
 
     let rotas = [];
     let rotaAtual = [];
@@ -7623,7 +7683,7 @@ function renderizarTabelaRota() {
         const tr = document.createElement('tr');
 
         // Destaque se está em rota gerada e validado
-        if (cli.rotaId && cli.validado) {
+        if (cli.rotaId && (cli.validado || cli.forcarInclusaoRota)) {
             tr.style.background = '#f0fdf4'; // Verde claro para clientes em rota válida
         }
 
@@ -7634,16 +7694,44 @@ function renderizarTabelaRota() {
             tr.style.fontWeight = '500';
         }
 
-        // Se não foi validado, marca como removido mas permite inclusão manual
-        if (!cli.validado) {
-            tr.style.opacity = '0.5';
-            tr.style.textDecoration = 'line-through';
-            tr.style.background = '#f5f5f5';
+        if (!cli.validado && !cli.forcarInclusaoRota) {
+            tr.style.opacity = '0.85';
         }
 
-        const statusIcon = cli.validado
-            ? '<span style="color:#22c55e; font-size:1.2rem;" title="Endereço validado">✔</span>'
-            : '<span style="color:#ef4444; font-size:1.2rem;" title="Endereço não validado">✖</span>';
+        let statusLabel = '';
+        let statusClass = '';
+
+        if (cli.validado) {
+            statusLabel = 'Mapa OK';
+            statusClass = 'status-ok';
+        } else if (cli.semCoordenadas) {
+            statusLabel = cli.forcarInclusaoRota
+                ? 'Sem mapa (incluído na rota)'
+                : 'Sem mapa (fora da rota)';
+            statusClass = cli.forcarInclusaoRota
+                ? 'status-sem-mapa-incluido'
+                : 'status-sem-mapa';
+        } else {
+            statusLabel = 'Pendente';
+            statusClass = 'status-pendente';
+        }
+
+        let checkboxHtml = '';
+        if (!cli.validado && cli.semCoordenadas) {
+            checkboxHtml = `
+                <label class="rota-toggle-manual">
+                  <input type="checkbox"
+                         data-cnpj="${cli.cnpj}"
+                         ${cli.forcarInclusaoRota ? 'checked' : ''}>
+                  Incluir na rota
+                </label>
+            `;
+        }
+
+        const statusHtml = `
+            <div class="status-badge ${statusClass}">${statusLabel}</div>
+            ${checkboxHtml}
+        `;
 
         // Dropdown de rotas disponíveis
         const rotasDisponiveis = estadoRota.rotasGeradas.map(r => ({
@@ -7679,13 +7767,37 @@ function renderizarTabelaRota() {
             <td style="font-size:0.85rem">${enderecoSafe}</td>
             <td>${bairroSafe}</td>
             <td>${cidadeSafe}</td>
-            <td style="text-align:center;">${statusIcon}</td>
+            <td>${statusHtml}</td>
             <td style="text-align:center;">${btnRemover}</td>
         `;
         fragment.appendChild(tr);
     });
 
     tbody.appendChild(fragment);
+
+    // Listeners para inclusão manual de clientes sem mapa na rota
+    document.querySelectorAll('.rota-toggle-manual input[type="checkbox"]').forEach(chk => {
+        chk.addEventListener('change', (e) => {
+            const cnpj = e.target.dataset.cnpj;
+            const marcado = e.target.checked;
+
+            const cliente = estadoRota.clientesFiltrados.find(c => c.cnpj === cnpj);
+            if (!cliente) return;
+
+            cliente.forcarInclusaoRota = marcado;
+
+            // Regera as rotas com a nova decisão do usuário
+            if (typeof gerarRotasInteligentes === 'function') {
+                gerarRotasInteligentes();
+            }
+
+            // Re-renderiza tabela e resumo
+            renderizarTabelaRota();
+            if (typeof exibirResumoRotas === 'function') {
+                exibirResumoRotas();
+            }
+        });
+    });
 
     // Listeners dos botões de remover
     document.querySelectorAll('.btn-remover-rota').forEach(btn => {
