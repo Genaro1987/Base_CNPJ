@@ -7136,35 +7136,66 @@ function aplicarFiltrosGerais() {
         filtrados = filtrados.filter(i => estadoRota.bairrosPrioridade.includes(i.bairro));
     }
 
-    // 3. Ordenação Inteligente baseada em Prioridade
+    // 3. Ordenação Inteligente baseada em Prioridade (versão robusta)
     filtrados.sort((a, b) => {
+        const cidadesPrio = Array.isArray(estadoRota.cidadesPrioridade)
+            ? estadoRota.cidadesPrioridade
+            : [];
+        const bairrosPrio = Array.isArray(estadoRota.bairrosPrioridade)
+            ? estadoRota.bairrosPrioridade
+            : [];
+
+        // Normaliza strings para evitar undefined em localeCompare
+        const cidadeA = (a.cidade || '').toString();
+        const cidadeB = (b.cidade || '').toString();
+        const bairroA = (a.bairro || '').toString();
+        const bairroB = (b.bairro || '').toString();
+        const enderecoA = (a.endereco || '').toString();
+        const enderecoB = (b.endereco || '').toString();
+
         // 1º Prioridade de Cidade (menor index = maior prioridade)
-        const cidadeIndexA = estadoRota.cidadesPrioridade.indexOf(a.cidade);
-        const cidadeIndexB = estadoRota.cidadesPrioridade.indexOf(b.cidade);
+        const cidadeIndexA = cidadesPrio.indexOf(cidadeA);
+        const cidadeIndexB = cidadesPrio.indexOf(cidadeB);
         const prioridadeCidadeA = cidadeIndexA >= 0 ? cidadeIndexA : 9999;
         const prioridadeCidadeB = cidadeIndexB >= 0 ? cidadeIndexB : 9999;
-        if (prioridadeCidadeA !== prioridadeCidadeB) return prioridadeCidadeA - prioridadeCidadeB;
-
-        // 2º Prioridade de Bairro (menor index = maior prioridade)
-        const bairroIndexA = estadoRota.bairrosPrioridade.indexOf(a.bairro);
-        const bairroIndexB = estadoRota.bairrosPrioridade.indexOf(b.bairro);
-        const prioridadeBairroA = bairroIndexA >= 0 ? bairroIndexA : 9999;
-        const prioridadeBairroB = bairroIndexB >= 0 ? bairroIndexB : 9999;
-        if (prioridadeBairroA !== prioridadeBairroB) return prioridadeBairroA - prioridadeBairroB;
-
-        // 3º Nome do Bairro (se não houver prioridade definida)
-        if (a.bairro !== b.bairro) return a.bairro.localeCompare(b.bairro);
-
-        // 4º Proximidade geográfica (se ambos têm coordenadas válidas)
-        if (a.lat && a.lon && b.lat && b.lon) {
-            // Simples comparação de coordenadas para agrupar próximos
-            const diffLatA = Math.abs(a.lat);
-            const diffLatB = Math.abs(b.lat);
-            if (diffLatA !== diffLatB) return diffLatA - diffLatB;
+        if (prioridadeCidadeA !== prioridadeCidadeB) {
+            return prioridadeCidadeA - prioridadeCidadeB;
         }
 
-        // 5º Endereço (fallback)
-        return a.endereco.localeCompare(b.endereco);
+        // 2º Prioridade de Bairro (menor index = maior prioridade)
+        const bairroIndexA = bairrosPrio.indexOf(bairroA);
+        const bairroIndexB = bairrosPrio.indexOf(bairroB);
+        const prioridadeBairroA = bairroIndexA >= 0 ? bairroIndexA : 9999;
+        const prioridadeBairroB = bairroIndexB >= 0 ? bairroIndexB : 9999;
+        if (prioridadeBairroA !== prioridadeBairroB) {
+            return prioridadeBairroA - prioridadeBairroB;
+        }
+
+        // 3º Nome do Bairro (se não houver prioridade definida)
+        if (bairroA !== bairroB) {
+            return bairroA.localeCompare(bairroB);
+        }
+
+        // 4º Proximidade geográfica (se ambos têm coordenadas válidas)
+        const latA = a.lat != null ? parseFloat(a.lat) : NaN;
+        const lonA = a.lon != null ? parseFloat(a.lon) : NaN;
+        const latB = b.lat != null ? parseFloat(b.lat) : NaN;
+        const lonB = b.lon != null ? parseFloat(b.lon) : NaN;
+
+        const coordsValidasA = !Number.isNaN(latA) && !Number.isNaN(lonA);
+        const coordsValidasB = !Number.isNaN(latB) && !Number.isNaN(lonB);
+
+        if (coordsValidasA && coordsValidasB) {
+            // Agrupa próximos de forma simples
+            const diffA = Math.abs(latA) + Math.abs(lonA);
+            const diffB = Math.abs(latB) + Math.abs(lonB);
+            if (diffA !== diffB) {
+                return diffA - diffB;
+            }
+        }
+
+        // 5º Endereço (fallback seguro)
+        return enderecoA.localeCompare(enderecoB);
     });
 
     estadoRota.clientesFiltrados = filtrados;
@@ -8428,6 +8459,17 @@ if(rotaImportFile) {
 // ===========================================================
 // 12. Modal de Adicionar Clientes Manualmente
 // ===========================================================
+
+function verificarExportar() {
+    // Garante que o botão de exportação só fique habilitado quando houver rotas geradas
+    if (!rotaExportBtn) return;
+
+    const temRotas =
+        Array.isArray(estadoRota.rotasGeradas) &&
+        estadoRota.rotasGeradas.length > 0;
+
+    rotaExportBtn.disabled = !temRotas;
+}
 
 setInterval(verificarExportar, 1000); // Check simples periódico
 // ===========================================================
