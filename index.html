@@ -7847,12 +7847,16 @@ function exibirResumoRotas() {
     // Event listeners para os botões de abrir mapa
     document.querySelectorAll('.btn-abrir-mapa-rota').forEach(btn => {
         btn.addEventListener('click', (e) => {
-            const btnEl = e.currentTarget;
-            const rotaId = parseInt(btnEl.dataset.rotaId, 10);
-            if (!Number.isFinite(rotaId) || isNaN(rotaId)) {
-                console.warn('[ROTA-MAPA] rotaId inválido no botão Abrir Mapa:', btnEl.dataset.rotaId);
+            const target = e.currentTarget || e.target;
+            const rotaId = parseInt(target.dataset.rotaId, 10);
+
+            console.log('[ROTA-MAPA] Clique em Abrir Mapa', { rotaId });
+
+            if (!rotaId) {
+                console.warn('[ROTA-MAPA] rotaId inválido ao clicar em Abrir Mapa');
                 return;
             }
+
             abrirRotaNoGoogleMaps(rotaId);
         });
     });
@@ -8190,6 +8194,9 @@ async function verificarCacheEndereco() {
     try {
         // Filtra apenas clientes não validados nos filtros ativos
         let naoValidados = estadoRota.clientesFiltrados.filter(c => {
+            // Nunca revalida quem já foi marcado como sem coordenadas
+            if (c.semCoordenadas) return false;
+
             const cidadeInclusa = estadoRota.cidadesPrioridade.length === 0 ||
                                   estadoRota.cidadesPrioridade.includes(c.cidade);
             const bairroIncluso = estadoRota.bairrosPrioridade.length === 0 ||
@@ -8213,6 +8220,8 @@ async function verificarCacheEndereco() {
 
         const cache = await cacheResp.json();
         let noCache = 0;
+        let invalidos = 0;
+        let jaTentados = 0;
         const precisamAPI = [];
 
         // Aplica coordenadas do cache
@@ -8220,6 +8229,16 @@ async function verificarCacheEndereco() {
             const cacheData = cache[cliente.cnpj];
 
             if (cacheData) {
+                // CACHE NEGATIVO: Já foi tentado mas não validou
+                if (cacheData.sucesso === false && cacheData.tentado === true) {
+                    cliente.validado = false;
+                    cliente.semCoordenadas = true;   // 🔴 marca que não tem coordenadas
+                    invalidos++;
+                    jaTentados++;
+                    console.log(`[CACHE] ⛔ ${cliente.razao} - Já tentado anteriormente sem sucesso, não validar novamente`);
+                    continue;
+                }
+
                 const latBruta = cacheData.lat;
                 const lonBruta = cacheData.lon;
 
@@ -8454,6 +8473,7 @@ async function validarEnderecosGoogleMaps(silencioso = false, cnpjsEspecificos =
                             console.log(`[API] ✅ ${cliente.razao} [${locationType}] (${location.lat}, ${location.lng})`);
                         } else {
                             cliente.validado = false;
+                            cliente.semCoordenadas = true; // 🔴 sem coordenadas utilizáveis
                             invalidos++;
                             const motivo = !coordenadasValidas ? 'coordenadas inválidas' :
                                           !precisaoAceitavel ? `localização imprecisa [${locationType}]` :
@@ -8462,6 +8482,7 @@ async function validarEnderecosGoogleMaps(silencioso = false, cnpjsEspecificos =
                         }
                     } else {
                         cliente.validado = false;
+                        cliente.semCoordenadas = true; // 🔴 sem coordenadas
                         invalidos++;
                         console.log(`[API] ❌ ${cliente.razao} - Não encontrado [${data.status}]`);
                     }
@@ -9375,7 +9396,7 @@ const painelGestao = document.getElementById('painel-gestao-rotas');
 const selectRotas = document.getElementById('select-rotas-geradas');
 const resumoInfo = document.getElementById('resumo-rotas-info');
 
-if (btnProcessar) {
+if (btnProcessar && painelGestao && selectRotas && resumoInfo) {
     btnProcessar.addEventListener('click', async () => {
         const btnTexto = btnProcessar.textContent;
         btnProcessar.textContent = "Processando...";
@@ -9430,7 +9451,7 @@ if (btnProcessar) {
 function atualizarSelectRotas() {
     // Em algumas versões da tela não existe o <select id="select-rotas-geradas">
     if (!selectRotas) {
-        console.warn('[ROTA] select-rotas-geradas não encontrado; pulando atualização do combobox de rotas.');
+        console.warn('[ROTA] select-rotas-geradas não encontrado; painel legado desativado.');
         return;
     }
 
@@ -9618,7 +9639,7 @@ function ordenarHierarquico(listaTodos, latOrigem, lonOrigem) {
 
 // ABRIR NO MAPA
 const btnAbrirRotaMapa = document.getElementById('btn-abrir-rota-mapa');
-if (btnAbrirRotaMapa) {
+if (btnAbrirRotaMapa && selectRotas && painelGestao) {
   btnAbrirRotaMapa.addEventListener('click', async () => {
     if (!selectRotas) {
       console.warn('[ROTA] Botão Abrir Mapa sem select-rotas-geradas configurado.');
@@ -9644,7 +9665,7 @@ if (btnAbrirRotaMapa) {
 
 // LIMPAR ROTA ESPECÍFICA
 const btnLimparRotaSelecionada = document.getElementById('btn-limpar-rota-selecionada');
-if (btnLimparRotaSelecionada) {
+if (btnLimparRotaSelecionada && selectRotas && painelGestao) {
   btnLimparRotaSelecionada.addEventListener('click', () => {
     const rotaId = parseInt(selectRotas.value);
     if (!rotaId || !rotasArmazenadas.has(rotaId)) return;
