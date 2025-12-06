@@ -2210,11 +2210,16 @@ const rotaCheckNaoAtendidos = document.getElementById('rota-check-nao-atendidos'
     // ============================================
     function normalizarTextoChave(str) {
       if (str == null) return '';
-      return String(str)
-        .normalize('NFD')                 // remove acentos
-        .replace(/[\u0300-\u036f]/g, '') // tira diacríticos
+      let s = String(str)
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '') // tira acentos
         .trim()
         .toUpperCase();
+
+      // Remove UF no final: ", RS", "- RS", " RS"
+      s = s.replace(/\s*[,/-]?\s*[A-Z]{2}$/, '');
+
+      return s.trim();
     }
 
     // ======================
@@ -7169,12 +7174,8 @@ function popularSelectBairros() {
     const cidadeItemNorm = normalizarTextoChave(item.cidade);
     if (!cidadeItemNorm) continue;
 
-    const matchCidade = cidadesAtivasNorm.some(cf =>
-      cidadeItemNorm === cf ||
-      cidadeItemNorm.includes(cf) ||
-      cf.includes(cidadeItemNorm)
-    );
-    if (!matchCidade) continue;
+    // MATCH SIMPLES: igualdade da cidade normalizada
+    if (!cidadesAtivasNorm.includes(cidadeItemNorm)) continue;
 
     const bairroLabel = (item.bairro || 'OUTROS').toString();
     const bairroNorm = normalizarTextoChave(bairroLabel);
@@ -7195,6 +7196,7 @@ function popularSelectBairros() {
         cidadesAtivasNorm,
         exemploBase: base.slice(0, 5).map(i => ({
           cidade: i.cidade,
+          cidadeNorm: normalizarTextoChave(i.cidade),
           bairro: i.bairro
         }))
       });
@@ -7357,7 +7359,7 @@ function aplicarFiltrosGerais() {
       return true;
     });
 
-    // 4. Filtro por cidade (normalizado + contains)
+    // 4. Filtro por cidade (normalizada, igualdade)
     const cidadesFiltroNorm = (estadoRota.cidadesPrioridade || [])
       .map(normalizarTextoChave)
       .filter(Boolean);
@@ -7366,15 +7368,11 @@ function aplicarFiltrosGerais() {
       filtrados = filtrados.filter(item => {
         const cidadeItemNorm = normalizarTextoChave(item.cidade);
         if (!cidadeItemNorm) return false;
-        return cidadesFiltroNorm.some(cf =>
-          cidadeItemNorm === cf ||
-          cidadeItemNorm.includes(cf) ||
-          cf.includes(cidadeItemNorm)
-        );
+        return cidadesFiltroNorm.includes(cidadeItemNorm);
       });
     }
 
-    // 5. Filtro por bairro (normalizado + contains)
+    // 5. Filtro por bairro (normalizada, igualdade)
     const bairrosFiltroNorm = (estadoRota.bairrosPrioridade || [])
       .map(normalizarTextoChave)
       .filter(Boolean);
@@ -7383,11 +7381,7 @@ function aplicarFiltrosGerais() {
       filtrados = filtrados.filter(item => {
         const bairroItemNorm = normalizarTextoChave(item.bairro || 'OUTROS');
         if (!bairroItemNorm) return false;
-        return bairrosFiltroNorm.some(bf =>
-          bairroItemNorm === bf ||
-          bairroItemNorm.includes(bf) ||
-          bf.includes(bairroItemNorm)
-        );
+        return bairrosFiltroNorm.includes(bairroItemNorm);
       });
     }
 
