@@ -2212,9 +2212,58 @@ const rotaCheckNaoAtendidos = document.getElementById('rota-check-nao-atendidos'
       if (str == null) return '';
       return String(str)
         .normalize('NFD')                 // remove acentos
-        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[\u0300-\u036f]/g, '') // tira diacríticos
         .trim()
         .toUpperCase();
+    }
+
+    // ======================
+    // Resolvedores genéricos
+    // ======================
+    function extrairCidadeGenerico(item) {
+      if (!item || typeof item !== 'object') return '';
+
+      // Tentativas diretas mais comuns
+      const diretos =
+        item.municipio_nome ||
+        item.municipio ||
+        item.cidade ||
+        item.MUNICIPIO_NOME ||
+        item.MUNICIPIO ||
+        item.CIDADE;
+
+      if (diretos) return String(diretos);
+
+      // Varre as chaves procurando algo com "MUNICIPIO" ou "CIDADE"
+      for (const chave of Object.keys(item)) {
+        const chaveNorm = chave.toUpperCase();
+        if (chaveNorm.includes('MUNICIP') || chaveNorm.includes('CIDADE')) {
+          const valor = item[chave];
+          if (valor) return String(valor);
+        }
+      }
+      return '';
+    }
+
+    function extrairBairroGenerico(item) {
+      if (!item || typeof item !== 'object') return '';
+
+      const diretos =
+        item.bairro ||
+        item.BAIRRO ||
+        item.BAIRRO_DESC;
+
+      if (diretos) return String(diretos);
+
+      // Varre as chaves procurando algo com "BAIRRO"
+      for (const chave of Object.keys(item)) {
+        const chaveNorm = chave.toUpperCase();
+        if (chaveNorm.includes('BAIRRO')) {
+          const valor = item[chave];
+          if (valor) return String(valor);
+        }
+      }
+      return '';
     }
 
     // ============================================
@@ -6881,18 +6930,43 @@ function atualizarAbaRota() {
 
     if (temDados) {
         // Normaliza os dados
-        estadoRota.dadosOriginais = dadosBrutos.map(item => ({
-            cnpj: String(item.cnpj_completo || item.cnpj || '').replace(/\D+/g, ''),
-            razao: item.razao_social || 'Sem Nome',
-            endereco: item.endereco || montarEndereco(item),
-            bairro: String(item.bairro || 'OUTROS').trim().toUpperCase(),
-            cidade: String(item.municipio_nome || item.municipio || item.cidade || '').trim().toUpperCase(),
-            lat: item.lat ? parseFloat(item.lat) : 0,
-            lon: item.lon ? parseFloat(item.lon) : 0,
-            validado: (item.lat && parseFloat(item.lat) !== 0),
-            // Propriedade específica da cobertura (encontrado = atendido)
-            encontrado: item.hasOwnProperty('encontrado') ? item.encontrado : true 
-        }));
+        estadoRota.dadosOriginais = dadosBrutos.map(item => {
+            const cnpjLimpo = String(item.cnpj_completo || item.cnpj || '').replace(/\D+/g, '');
+
+            const razao =
+                item.razao_social ||
+                item.nome_empresarial ||
+                item.fantasia ||
+                'Sem Nome';
+
+            const endereco = item.endereco || montarEndereco(item);
+
+            const bairroRaw = extrairBairroGenerico(item);
+            const cidadeRaw = extrairCidadeGenerico(item);
+
+            const bairroNorm = normalizarTextoChave(bairroRaw) || 'OUTROS';
+            const cidadeNorm = normalizarTextoChave(cidadeRaw);
+
+            return {
+                cnpj: cnpjLimpo,
+                razao,
+                endereco,
+                bairro: bairroNorm,
+                cidade: cidadeNorm,
+                lat: item.lat ? parseFloat(item.lat) : 0,
+                lon: item.lon ? parseFloat(item.lon) : 0,
+                validado: !!(item.lat && parseFloat(item.lat) !== 0),
+                // Propriedade específica da cobertura (encontrado = atendido)
+                encontrado: Object.prototype.hasOwnProperty.call(item, 'encontrado')
+                    ? item.encontrado
+                    : true
+            };
+        });
+
+        rotaDebug && rotaDebug('Normalização rota - exemplo', {
+            entrada: dadosBrutos && dadosBrutos.length > 0 ? dadosBrutos[0] : null,
+            saida: estadoRota.dadosOriginais && estadoRota.dadosOriginais.length > 0 ? estadoRota.dadosOriginais[0] : null
+        });
 
         const total = estadoRota.dadosOriginais.length;
         rotaFeedbackFonte.textContent = `Carregado: ${total} registros via ${fonteSelecionada === 'pesquisa' ? 'Pesquisa' : 'Cobertura'}.`;
