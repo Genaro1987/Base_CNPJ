@@ -2210,16 +2210,33 @@ const rotaCheckNaoAtendidos = document.getElementById('rota-check-nao-atendidos'
     // ============================================
     function normalizarTextoChave(str) {
       if (str == null) return '';
-      let s = String(str)
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '') // tira acentos
+      return String(str)
+        .normalize('NFD')                 // remove acentos
+        .replace(/[\u0300-\u036f]/g, '')  // tira diacríticos
         .trim()
         .toUpperCase();
+    }
 
-      // Remove UF no final: ", RS", "- RS", " RS"
-      s = s.replace(/\s*[,/-]?\s*[A-Z]{2}$/, '');
+    // ======================================================
+    // Extrai BAIRRO e CIDADE a partir do "endereço completo"
+    // Padrão esperado: ..., BAIRRO, CIDADE, UF
+    // ======================================================
+    function dividirEnderecoCompleto(enderecoCompleto) {
+      const partes = String(enderecoCompleto || '')
+        .split(',')
+        .map(p => p.trim())
+        .filter(Boolean);
 
-      return s.trim();
+      const total = partes.length;
+      let cidade = '';
+      let bairro = '';
+
+      if (total >= 3) {
+        cidade = partes[total - 2];  // penúltimo: CIDADE
+        bairro = partes[total - 3];  // antepenúltimo: BAIRRO
+      }
+
+      return { cidade, bairro };
     }
 
     // ======================
@@ -3127,26 +3144,52 @@ function atualizarResultados(dados) {
       if (!Array.isArray(listaEmpresas)) return;
 
       // Limpa o estado de rota baseado em pesquisa anterior
-      estadoRota.dadosOriginais = listaEmpresas;
-      rotaDebug('Sincronizar com Lista CNPJ', {
-        totalEmpresas: Array.isArray(estadoRota.dadosOriginais) ? estadoRota.dadosOriginais.length : 0,
-        cidadesUnicas: Array.from(
-          new Set(
-            (estadoRota.dadosOriginais || [])
-              .map(i => i.cidade)
-              .filter(Boolean)
-          )
-        ),
-        exemploPrimeiro: Array.isArray(estadoRota.dadosOriginais) && estadoRota.dadosOriginais.length > 0
-          ? {
-              cnpj: estadoRota.dadosOriginais[0].cnpj,
-              razao: estadoRota.dadosOriginais[0].razao || estadoRota.dadosOriginais[0].razao_social,
-              endereco: estadoRota.dadosOriginais[0].endereco,
-              bairro: estadoRota.dadosOriginais[0].bairro,
-              cidade: estadoRota.dadosOriginais[0].cidade
-            }
-          : null
+      estadoRota.dadosOriginais = (listaEmpresas || []).map(item => {
+        const enderecoCompleto =
+          item.endereco_completo ||
+          item.ENDERECO_COMPLETO ||
+          item.endereco ||
+          (typeof montarEndereco === 'function' ? montarEndereco(item) : '');
+
+        const { cidade, bairro } = dividirEnderecoCompleto(enderecoCompleto);
+
+        const cidadeNorm = normalizarTextoChave(cidade);
+        const bairroNorm = normalizarTextoChave(bairro) || 'OUTROS';
+
+        return {
+          cnpj: String(item.cnpj_completo || item.cnpj || '').replace(/\D+/g, ''),
+          razao:
+            item.razao_social ||
+            item.nome_empresarial ||
+            item.fantasia ||
+            'Sem Nome',
+          endereco: enderecoCompleto,
+          bairro: bairroNorm,
+          cidade: cidadeNorm,
+          lat: item.lat ? parseFloat(item.lat) : 0,
+          lon: item.lon ? parseFloat(item.lon) : 0,
+          validado: !!(item.lat && parseFloat(item.lat) !== 0),
+          encontrado: Object.prototype.hasOwnProperty.call(item, 'encontrado')
+            ? item.encontrado
+            : true
+        };
       });
+
+      if (typeof rotaDebug === 'function') {
+        rotaDebug('Sincronizar com Lista CNPJ', {
+          totalEmpresas: Array.isArray(estadoRota.dadosOriginais) ? estadoRota.dadosOriginais.length : 0,
+          cidadesUnicas: Array.from(
+            new Set(
+              (estadoRota.dadosOriginais || [])
+                .map(i => i.cidade)
+                .filter(Boolean)
+            )
+          ),
+          exemploPrimeiro: Array.isArray(estadoRota.dadosOriginais) && estadoRota.dadosOriginais.length > 0
+            ? estadoRota.dadosOriginais[0]
+            : null
+        });
+      }
       estadoRota.cidadesPrioridade = [];
       estadoRota.bairrosPrioridade = [];
       estadoRota.clientesFiltrados = [];
@@ -6934,34 +6977,35 @@ function atualizarAbaRota() {
     tabRotaBtn.setAttribute('aria-disabled', !temDados);
 
     if (temDados) {
-        // Normaliza os dados
-        estadoRota.dadosOriginais = dadosBrutos.map(item => {
-            const cnpjLimpo = String(item.cnpj_completo || item.cnpj || '').replace(/\D+/g, '');
+        // dadosBrutos = array vindo da aba "Resultados" (Lista CNPJ)
+        estadoRota.dadosOriginais = (dadosBrutos || []).map(item => {
+            // 1) Endereço completo: prioriza o campo usado na grid de resultados
+            const enderecoCompleto =
+                item.endereco_completo || // nome mais comum
+                item.ENDERECO_COMPLETO ||
+                item.endereco ||
+                (typeof montarEndereco === 'function' ? montarEndereco(item) : '');
 
-            const razao =
-                item.razao_social ||
-                item.nome_empresarial ||
-                item.fantasia ||
-                'Sem Nome';
+            // 2) Extrai cidade e bairro a partir do endereço completo
+            const { cidade, bairro } = dividirEnderecoCompleto(enderecoCompleto);
 
-            const endereco = item.endereco || montarEndereco(item);
-
-            const bairroRaw = extrairBairroGenerico(item);
-            const cidadeRaw = extrairCidadeGenerico(item);
-
-            const bairroNorm = normalizarTextoChave(bairroRaw) || 'OUTROS';
-            const cidadeNorm = normalizarTextoChave(cidadeRaw);
+            // 3) Normaliza campos-chave
+            const cidadeNorm = normalizarTextoChave(cidade);
+            const bairroNorm = normalizarTextoChave(bairro) || 'OUTROS';
 
             return {
-                cnpj: cnpjLimpo,
-                razao,
-                endereco,
+                cnpj: String(item.cnpj_completo || item.cnpj || '').replace(/\D+/g, ''),
+                razao:
+                    item.razao_social ||
+                    item.nome_empresarial ||
+                    item.fantasia ||
+                    'Sem Nome',
+                endereco: enderecoCompleto,
                 bairro: bairroNorm,
                 cidade: cidadeNorm,
                 lat: item.lat ? parseFloat(item.lat) : 0,
                 lon: item.lon ? parseFloat(item.lon) : 0,
                 validado: !!(item.lat && parseFloat(item.lat) !== 0),
-                // Propriedade específica da cobertura (encontrado = atendido)
                 encontrado: Object.prototype.hasOwnProperty.call(item, 'encontrado')
                     ? item.encontrado
                     : true
