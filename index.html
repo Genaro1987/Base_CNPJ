@@ -1647,21 +1647,21 @@
              <input type="hidden" id="rota-provedor-select" value="google">
              <input type="text" id="rota-origem" placeholder="Ponto de Partida (Opcional)" style="flex: 1; max-width: 250px;">
              <!-- Configuração de tamanho das rotas -->
-            <div style="display:flex; flex-direction:column; gap:4px; min-width: 150px;">
-               <label for="rota-limite-clientes"
-                      style="font-size:0.75rem; font-weight:600; letter-spacing: 0.06em; white-space: nowrap; color:#475569;">
-                 CLIENTES POR ROTA
-               </label>
-               <input
-                 type="number"
-                 id="rota-limite-clientes"
-                 min="1"
-                 max="100"
-                 value="10"
-                 style="width:100%; padding:0.35rem 0.5rem; border-radius:8px; border:1px solid #cbd5e1; font-size:0.85rem;"
-                 title="Define o número máximo de clientes por rota gerada automaticamente"
-               >
-             </div>
+            <div style="display:flex; flex-direction:column; min-width: 160px;">
+              <label for="rota-limite-clientes"
+                     style="font-size: 0.75rem; font-weight: 600; letter-spacing: 0.06em; white-space: nowrap; color:#475569;">
+                CLIENTES POR ROTA
+              </label>
+              <input
+                type="number"
+                id="rota-limite-clientes"
+                min="1"
+                max="100"
+                value="10"
+                style="padding: 0.35rem 0.5rem; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 0.85rem; max-width: 80px;"
+                title="Define o número máximo de clientes por rota gerada automaticamente"
+              >
+            </div>
              <button type="button" class="btn-primary" id="rota-gerar-btn" style="padding: 0.85rem 2rem; font-size: 1rem;">
                 📍 Validar Endereços
              </button>
@@ -6978,40 +6978,40 @@ function renderizarTagsCidades() {
     });
 }
 
-// 4. Popula Select de Bairros (Depende das Cidades)
+// 4. Popula Select de Bairros (Depende das Cidades selecionadas)
 function popularSelectBairros() {
     if (!rotaSelectBairro) return;
 
-    const dadosOriginais = Array.isArray(estadoRota.dadosOriginais)
+    const base = Array.isArray(estadoRota.dadosOriginais)
         ? estadoRota.dadosOriginais
         : [];
 
+    // Normaliza cidades selecionadas para UPPERCASE
     const cidadesAtivas = Array.isArray(estadoRota.cidadesPrioridade)
         ? estadoRota.cidadesPrioridade.map(c => String(c || '').trim().toUpperCase())
         : [];
 
-    // Reset básico
+    // Reset do select
     rotaSelectBairro.innerHTML = '<option value="">Selecione para priorizar...</option>';
 
-    if (!cidadesAtivas.length || !dadosOriginais.length) {
+    if (!base.length || !cidadesAtivas.length) {
         rotaSelectBairro.disabled = true;
         return;
     }
 
     const bairrosUnicos = new Set();
 
-    dadosOriginais.forEach(item => {
+    base.forEach(item => {
         const cidade = String(item.cidade || '').trim().toUpperCase();
-        const bairro = String(item.bairro || 'OUTROS').trim().toUpperCase();
+        if (!cidadesAtivas.includes(cidade)) return;
 
-        if (cidadesAtivas.includes(cidade)) {
-            bairrosUnicos.add(bairro);
-        }
+        const bairro = String(item.bairro || 'OUTROS').trim().toUpperCase();
+        bairrosUnicos.add(bairro);
     });
 
     let listaSorted = Array.from(bairrosUnicos).sort();
 
-    // Se por algum motivo não achar nenhum bairro, garante pelo menos OUTROS
+    // Se, por qualquer motivo, não encontrarmos nada, mantemos pelo menos OUTROS
     if (!listaSorted.length) {
         listaSorted = ['OUTROS'];
     }
@@ -7128,7 +7128,7 @@ function renderizarTagsBairros() {
 
 // 6. Motor de Filtragem Principal e Renderização da Tabela
 function aplicarFiltrosGerais() {
-    // 1. Determina fonte (pesquisa x cobertura)
+    // 1. Determina a fonte selecionada (Pesquisa x Cobertura)
     let fonteSelecionada = '';
     for (const radio of rotaInputsFonte) {
         if (radio.checked) fonteSelecionada = radio.value;
@@ -7141,7 +7141,7 @@ function aplicarFiltrosGerais() {
         ? estadoRota.dadosOriginais
         : [];
 
-    // 2. Filtra por status (apenas faz diferença na fonte "cobertura")
+    // 2. Filtro por status (somente relevante na fonte "cobertura")
     let filtrados = base.filter(item => {
         if (fonteSelecionada === 'cobertura') {
             if (item.encontrado && !incluirAtendidos) return false;
@@ -7150,29 +7150,46 @@ function aplicarFiltrosGerais() {
         return true;
     });
 
-    // 3. Filtro por cidade/bairro
+    // 3. Filtros por cidade e bairro (defensivos)
     const cidadesPrio = Array.isArray(estadoRota.cidadesPrioridade)
-        ? estadoRota.cidadesPrioridade.map(c => String(c || '').trim().toUpperCase())
+        ? estadoRota.cidadesPrioridade.map(c => String(c || '').trim().toUpperCase()).filter(Boolean)
         : [];
 
     const bairrosPrio = Array.isArray(estadoRota.bairrosPrioridade)
-        ? estadoRota.bairrosPrioridade.map(b => String(b || '').trim().toUpperCase())
+        ? estadoRota.bairrosPrioridade.map(b => String(b || '').trim().toUpperCase()).filter(Boolean)
         : [];
 
+    // 3.1 Filtro por cidade – com fallback: se zerar tudo, mantemos a lista original
     if (cidadesPrio.length) {
-        filtrados = filtrados.filter(i =>
-            cidadesPrio.includes(String(i.cidade || '').trim().toUpperCase())
+        const filtradosCidade = filtrados.filter(item =>
+            cidadesPrio.includes(String(item.cidade || '').trim().toUpperCase())
         );
+
+        if (filtradosCidade.length > 0) {
+            filtrados = filtradosCidade;
+        } else {
+            console.warn('[ROTA] Nenhum registro bateu com as cidades selecionadas. Mantendo sem filtro de cidade.', { cidadesPrio });
+        }
     }
 
+    // 3.2 Filtro por bairro – também com fallback
     if (bairrosPrio.length) {
-        filtrados = filtrados.filter(i =>
-            bairrosPrio.includes(String(i.bairro || '').trim().toUpperCase())
+        const filtradosBairro = filtrados.filter(item =>
+            bairrosPrio.includes(String(item.bairro || '').trim().toUpperCase())
         );
+
+        if (filtradosBairro.length > 0) {
+            filtrados = filtradosBairro;
+        } else {
+            console.warn('[ROTA] Nenhum registro bateu com os bairros selecionados. Mantendo sem filtro de bairro.', { bairrosPrio });
+        }
     }
 
-    // 4. Ordenação inteligente, mas à prova de nulos
+    // 4. Ordenação inteligente, à prova de nulos
     filtrados.sort((a, b) => {
+        const cidadesCfg = cidadesPrio;
+        const bairrosCfg = bairrosPrio;
+
         const cidadeA = String(a.cidade || '').trim().toUpperCase();
         const cidadeB = String(b.cidade || '').trim().toUpperCase();
         const bairroA = String(a.bairro || '').trim().toUpperCase();
@@ -7180,34 +7197,34 @@ function aplicarFiltrosGerais() {
         const enderecoA = String(a.endereco || '');
         const enderecoB = String(b.endereco || '');
 
-        // Prioridade de cidade
-        const idxCidadeA = cidadesPrio.indexOf(cidadeA);
-        const idxCidadeB = cidadesPrio.indexOf(cidadeB);
+        // 4.1 prioridade de cidade
+        const idxCidadeA = cidadesCfg.indexOf(cidadeA);
+        const idxCidadeB = cidadesCfg.indexOf(cidadeB);
         const prioCidadeA = idxCidadeA === -1 ? 9999 : idxCidadeA;
         const prioCidadeB = idxCidadeB === -1 ? 9999 : idxCidadeB;
         if (prioCidadeA !== prioCidadeB) {
             return prioCidadeA - prioCidadeB;
         }
 
-        // Prioridade de bairro
-        const idxBairroA = bairrosPrio.indexOf(bairroA);
-        const idxBairroB = bairrosPrio.indexOf(bairroB);
+        // 4.2 prioridade de bairro
+        const idxBairroA = bairrosCfg.indexOf(bairroA);
+        const idxBairroB = bairrosCfg.indexOf(bairroB);
         const prioBairroA = idxBairroA === -1 ? 9999 : idxBairroA;
         const prioBairroB = idxBairroB === -1 ? 9999 : idxBairroB;
         if (prioBairroA !== prioBairroB) {
             return prioBairroA - prioBairroB;
         }
 
-        // Nome do bairro como fallback
+        // 4.3 nome do bairro como fallback
         if (bairroA !== bairroB) {
             return bairroA.localeCompare(bairroB);
         }
 
-        // Endereço como último critério
+        // 4.4 endereço como critério final
         return enderecoA.localeCompare(enderecoB);
     });
 
-    // 5. Atualiza estado e tabela
+    // 5. Atualiza estado e re-renderiza a tabela
     estadoRota.clientesFiltrados = filtrados;
     renderizarTabelaRota();
 }
