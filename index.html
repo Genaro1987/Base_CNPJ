@@ -2204,6 +2204,34 @@ const rotaCheckNaoAtendidos = document.getElementById('rota-check-nao-atendidos'
     rotasGeradas: [],       // Array de rotas geradas [{id, clientes: []}]
     rotasSalvas: {}         // Objeto para persistência { "Nome Rota": {estado} }
 };
+
+    // ============================================
+    //  DEBUG – ferramentas de auditoria da Rota
+    // ============================================
+    const DEBUG_ROTA = true;
+
+    function rotaDebug(label, payload) {
+        if (!DEBUG_ROTA) return;
+        if (console && console.groupCollapsed) {
+            console.groupCollapsed(`%c[ROTA-DEBUG] ${label}`, 'color:#b91c1c;font-weight:bold;');
+            if (payload !== undefined) {
+                console.log(payload);
+            }
+            console.groupEnd();
+        } else {
+            console.log('[ROTA-DEBUG]', label, payload);
+        }
+    }
+
+    function rotaWarn(label, payload) {
+        if (!DEBUG_ROTA) return;
+        console.warn('[ROTA-WARN]', label, payload);
+    }
+
+    function rotaError(label, error, extra) {
+        if (!DEBUG_ROTA) return;
+        console.error('[ROTA-ERROR]', label, error, extra || {});
+    }
     let cacheCategoriasMercado = {};
     let selectedMunicipios = new Map();
     let selectedCnaes = new Map();
@@ -3026,6 +3054,18 @@ function atualizarResultados(dados) {
 
       // Limpa o estado de rota baseado em pesquisa anterior
       estadoRota.dadosOriginais = listaEmpresas;
+      rotaDebug('Sincronizar com Lista CNPJ', {
+          totalEmpresas: Array.isArray(listaEmpresas) ? listaEmpresas.length : 0,
+          exemploPrimeiro: Array.isArray(listaEmpresas) && listaEmpresas.length > 0
+              ? {
+                  cnpj: listaEmpresas[0].cnpj,
+                  razao: listaEmpresas[0].razao || listaEmpresas[0].razao_social,
+                  endereco: listaEmpresas[0].endereco,
+                  bairro: listaEmpresas[0].bairro,
+                  cidade: listaEmpresas[0].cidade
+              }
+              : null
+      });
       estadoRota.cidadesPrioridade = [];
       estadoRota.bairrosPrioridade = [];
       estadoRota.clientesFiltrados = [];
@@ -6848,6 +6888,11 @@ function popularSelectCidades() {
     const cidadesUnicas = new Set(estadoRota.dadosOriginais.map(i => i.cidade).filter(c => c));
     const listaSorted = Array.from(cidadesUnicas).sort();
 
+    rotaDebug('popularSelectCidades', {
+        totalDadosOriginais: Array.isArray(estadoRota.dadosOriginais) ? estadoRota.dadosOriginais.length : 0,
+        cidadesEncontradas: listaSorted
+    });
+
     rotaSelectCidade.innerHTML = '<option value="">Selecione para adicionar...</option>';
     
     // Opção especial: Todas
@@ -6987,12 +7032,18 @@ function popularSelectBairros() {
         : [];
 
     const cidadesAtivas = Array.isArray(estadoRota.cidadesPrioridade)
-        ? estadoRota.cidadesPrioridade.filter(Boolean)
+        ? estadoRota.cidadesPrioridade
         : [];
+
+    rotaDebug('popularSelectBairros - entrada', {
+        totalBase: base.length,
+        cidadesAtivas
+    });
 
     rotaSelectBairro.innerHTML = '<option value="">Selecione para priorizar...</option>';
 
     if (!base.length || !cidadesAtivas.length) {
+        rotaWarn('popularSelectBairros - sem base ou sem cidades ativas', { totalBase: base.length, cidadesAtivas });
         rotaSelectBairro.disabled = true;
         return;
     }
@@ -7000,13 +7051,24 @@ function popularSelectBairros() {
     const bairrosUnicos = new Set();
 
     base.forEach(item => {
-        if (!cidadesAtivas.includes(item.cidade)) return;
+        const cidade = item.cidade || '';
         const bairro = (item.bairro || 'OUTROS').toString();
-        bairrosUnicos.add(bairro);
+        if (cidadesAtivas.includes(cidade)) {
+            bairrosUnicos.add(bairro);
+        }
     });
 
     let listaSorted = Array.from(bairrosUnicos).sort();
-    if (!listaSorted.length) listaSorted = ['OUTROS'];
+    if (!listaSorted.length) {
+        rotaWarn('popularSelectBairros - nenhuma combinação encontrada, usando OUTROS', {
+            cidadesAtivas
+        });
+        listaSorted = ['OUTROS'];
+    }
+
+    rotaDebug('popularSelectBairros - saida', {
+        bairrosEncontrados: listaSorted
+    });
 
     rotaSelectBairro.disabled = false;
     listaSorted.forEach(bairro => {
@@ -7119,94 +7181,109 @@ function renderizarTagsBairros() {
 
 // 6. Motor de Filtragem Principal e Renderização da Tabela
 function aplicarFiltrosGerais() {
-    // 1. Descobrir qual fonte está ativa (pesquisa x cobertura)
-    let fonteSelecionada = 'pesquisa';
-    for (const radio of rotaInputsFonte) {
-        if (radio.checked) fonteSelecionada = radio.value;
-    }
-
-    const incluirAtendidos = rotaCheckAtendidos ? rotaCheckAtendidos.checked : true;
-    const incluirNaoAtendidos = rotaCheckNaoAtendidos ? rotaCheckNaoAtendidos.checked : true;
-
-    // 2. Base de trabalho (clone da origem)
-    let filtrados = Array.isArray(estadoRota.dadosOriginais)
-        ? [...estadoRota.dadosOriginais]
-        : [];
-
-    // 3. Filtro por status (só afeta a fonte "cobertura")
-    filtrados = filtrados.filter(item => {
-        if (fonteSelecionada === 'cobertura') {
-            if (item.encontrado && !incluirAtendidos) return false;
-            if (!item.encontrado && !incluirNaoAtendidos) return false;
+    try {
+        let fonteSelecionada = 'pesquisa';
+        for (const radio of rotaInputsFonte) {
+            if (radio.checked) fonteSelecionada = radio.value;
         }
-        return true;
-    });
 
-    // 4. Filtro por cidade (comparação direta)
-    if (estadoRota.cidadesPrioridade && estadoRota.cidadesPrioridade.length > 0) {
-        filtrados = filtrados.filter(i =>
-            estadoRota.cidadesPrioridade.includes(i.cidade)
-        );
-    } else {
-        // Regra antiga: se estiver em cobertura e nenhuma cidade selecionada, esvazia
-        if (fonteSelecionada === 'cobertura') {
+        const incluirAtendidos = rotaCheckAtendidos ? rotaCheckAtendidos.checked : true;
+        const incluirNaoAtendidos = rotaCheckNaoAtendidos ? rotaCheckNaoAtendidos.checked : true;
+
+        let filtrados = Array.isArray(estadoRota.dadosOriginais)
+            ? [...estadoRota.dadosOriginais]
+            : [];
+
+        rotaDebug('aplicarFiltrosGerais - entrada', {
+            fonteSelecionada,
+            incluirAtendidos,
+            incluirNaoAtendidos,
+            totalBase: filtrados.length,
+            cidadesPrioridade: estadoRota.cidadesPrioridade,
+            bairrosPrioridade: estadoRota.bairrosPrioridade
+        });
+
+        // --- Filtro por status (se estiver usando cobertura) ---
+        filtrados = filtrados.filter(item => {
+            if (fonteSelecionada === 'cobertura') {
+                if (item.encontrado && !incluirAtendidos) return false;
+                if (!item.encontrado && !incluirNaoAtendidos) return false;
+            }
+            return true;
+        });
+
+        // --- Filtro por cidade ---
+        if (estadoRota.cidadesPrioridade && estadoRota.cidadesPrioridade.length > 0) {
+            filtrados = filtrados.filter(i =>
+                estadoRota.cidadesPrioridade.includes(i.cidade)
+            );
+        } else if (fonteSelecionada === 'cobertura') {
             filtrados = [];
         }
+
+        // --- Filtro por bairro ---
+        if (estadoRota.bairrosPrioridade && estadoRota.bairrosPrioridade.length > 0) {
+            filtrados = filtrados.filter(i =>
+                estadoRota.bairrosPrioridade.includes(i.bairro)
+            );
+        }
+
+        rotaDebug('aplicarFiltrosGerais - posFiltros', {
+            totalFiltrados: filtrados.length
+        });
+
+        // --- Ordenação (ajuste se necessário, mas sempre com fallback de string) ---
+        filtrados.sort((a, b) => {
+            const cidadesPrio = Array.isArray(estadoRota.cidadesPrioridade)
+                ? estadoRota.cidadesPrioridade
+                : [];
+            const bairrosPrio = Array.isArray(estadoRota.bairrosPrioridade)
+                ? estadoRota.bairrosPrioridade
+                : [];
+
+            const cidadeA = a.cidade || '';
+            const cidadeB = b.cidade || '';
+            const bairroA = a.bairro || '';
+            const bairroB = b.bairro || '';
+            const enderecoA = a.endereco || '';
+            const enderecoB = b.endereco || '';
+
+            const idxCidadeA = cidadesPrio.indexOf(cidadeA);
+            const idxCidadeB = cidadesPrio.indexOf(cidadeB);
+            const prioCidadeA = idxCidadeA >= 0 ? idxCidadeA : 9999;
+            const prioCidadeB = idxCidadeB >= 0 ? idxCidadeB : 9999;
+            if (prioCidadeA !== prioCidadeB) {
+                return prioCidadeA - prioCidadeB;
+            }
+
+            const idxBairroA = bairrosPrio.indexOf(bairroA);
+            const idxBairroB = bairrosPrio.indexOf(bairroB);
+            const prioBairroA = idxBairroA >= 0 ? idxBairroA : 9999;
+            const prioBairroB = idxBairroB >= 0 ? idxBairroB : 9999;
+            if (prioBairroA !== prioBairroB) {
+                return prioBairroA - prioBairroB;
+            }
+
+            if (bairroA !== bairroB) {
+                return bairroA.localeCompare(bairroB);
+            }
+            return enderecoA.localeCompare(enderecoB);
+        });
+
+        rotaDebug('aplicarFiltrosGerais - saida', {
+            totalFiltrados: filtrados.length,
+            exemploPrimeiro: filtrados[0]
+        });
+
+        estadoRota.clientesFiltrados = filtrados;
+        renderizarTabelaRota();
+    } catch (err) {
+        rotaError('aplicarFiltrosGerais - exception', err, {
+            dadosOriginaisExemplo: Array.isArray(estadoRota.dadosOriginais) && estadoRota.dadosOriginais.length > 0
+                ? estadoRota.dadosOriginais[0]
+                : null
+        });
     }
-
-    // 5. Filtro por bairro (se houver prioridade definida)
-    if (estadoRota.bairrosPrioridade && estadoRota.bairrosPrioridade.length > 0) {
-        filtrados = filtrados.filter(i =>
-            estadoRota.bairrosPrioridade.includes(i.bairro)
-        );
-    }
-
-    // 6. Ordenação baseada em prioridade + nome de bairro/endereço (à prova de nulos)
-    filtrados.sort((a, b) => {
-        const cidadesPrio = Array.isArray(estadoRota.cidadesPrioridade)
-            ? estadoRota.cidadesPrioridade
-            : [];
-        const bairrosPrio = Array.isArray(estadoRota.bairrosPrioridade)
-            ? estadoRota.bairrosPrioridade
-            : [];
-
-        const cidadeA = a.cidade || '';
-        const cidadeB = b.cidade || '';
-        const bairroA = a.bairro || '';
-        const bairroB = b.bairro || '';
-        const enderecoA = a.endereco || '';
-        const enderecoB = b.endereco || '';
-
-        // 6.1 prioridade de cidade
-        const idxCidadeA = cidadesPrio.indexOf(cidadeA);
-        const idxCidadeB = cidadesPrio.indexOf(cidadeB);
-        const prioCidadeA = idxCidadeA >= 0 ? idxCidadeA : 9999;
-        const prioCidadeB = idxCidadeB >= 0 ? idxCidadeB : 9999;
-        if (prioCidadeA !== prioCidadeB) {
-            return prioCidadeA - prioCidadeB;
-        }
-
-        // 6.2 prioridade de bairro
-        const idxBairroA = bairrosPrio.indexOf(bairroA);
-        const idxBairroB = bairrosPrio.indexOf(bairroB);
-        const prioBairroA = idxBairroA >= 0 ? idxBairroA : 9999;
-        const prioBairroB = idxBairroB >= 0 ? idxBairroB : 9999;
-        if (prioBairroA !== prioBairroB) {
-            return prioBairroA - prioBairroB;
-        }
-
-        // 6.3 nome do bairro
-        if (bairroA !== bairroB) {
-            return bairroA.localeCompare(bairroB);
-        }
-
-        // 6.4 endereço (fallback)
-        return enderecoA.localeCompare(enderecoB);
-    });
-
-    // 7. Atualiza estado e re-renderiza
-    estadoRota.clientesFiltrados = filtrados;
-    renderizarTabelaRota();
 }
 
 const LIMITE_ROTA_PADRAO = 10;
@@ -7334,7 +7411,18 @@ function renderizarTabelaRota() {
     const tbody = document.getElementById('rota-corpo');
     tbody.innerHTML = '';
 
-    if (estadoRota.clientesFiltrados.length === 0) {
+    const clientesBase = Array.isArray(estadoRota.clientesFiltrados)
+        ? estadoRota.clientesFiltrados
+        : [];
+
+    rotaDebug('renderizarTabelaRota', {
+        totalClientes: Array.isArray(clientesBase) ? clientesBase.length : 0,
+        exemploPrimeiro: Array.isArray(clientesBase) && clientesBase.length > 0
+            ? clientesBase[0]
+            : null
+    });
+
+    if (clientesBase.length === 0) {
         tbody.innerHTML = '<tr class="empty-state"><td colspan="8">Selecione cidade e bairro para carregar os dados.</td></tr>';
         document.getElementById('rota-contador').textContent = '0 na rota';
         return;
@@ -7342,7 +7430,7 @@ function renderizarTabelaRota() {
 
     // ORDENAÇÃO: Clientes validados primeiro, não validados por último
     // Mantém a ordem original dentro de cada grupo
-    const clientesOrdenados = [...estadoRota.clientesFiltrados].sort((a, b) => {
+    const clientesOrdenados = [...clientesBase].sort((a, b) => {
         // Validados primeiro (true = 1, false = 0)
         // Inverte para que validados (1) venham antes de não validados (0)
         return (b.validado ? 1 : 0) - (a.validado ? 1 : 0);
