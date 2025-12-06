@@ -1647,9 +1647,10 @@
              <input type="hidden" id="rota-provedor-select" value="google">
              <input type="text" id="rota-origem" placeholder="Ponto de Partida (Opcional)" style="flex: 1; max-width: 250px;">
              <!-- Configuração de tamanho das rotas -->
-             <div style="display:flex; flex-direction:column; gap:4px; max-width:120px;">
-               <label for="rota-limite-clientes" style="font-size:0.75rem; font-weight:600; color:#475569;">
-                 Clientes por rota
+            <div style="display:flex; flex-direction:column; gap:4px; min-width: 150px;">
+               <label for="rota-limite-clientes"
+                      style="font-size:0.75rem; font-weight:600; letter-spacing: 0.06em; white-space: nowrap; color:#475569;">
+                 CLIENTES POR ROTA
                </label>
                <input
                  type="number"
@@ -6979,19 +6980,44 @@ function renderizarTagsCidades() {
 
 // 4. Popula Select de Bairros (Depende das Cidades)
 function popularSelectBairros() {
-    // Filtra dados apenas das cidades selecionadas
-    const dadosCidades = estadoRota.dadosOriginais.filter(i => estadoRota.cidadesPrioridade.includes(i.cidade));
-    const bairrosUnicos = new Set(dadosCidades.map(i => i.bairro).filter(b => b));
-    const listaSorted = Array.from(bairrosUnicos).sort();
+    if (!rotaSelectBairro) return;
 
+    const dadosOriginais = Array.isArray(estadoRota.dadosOriginais)
+        ? estadoRota.dadosOriginais
+        : [];
+
+    const cidadesAtivas = Array.isArray(estadoRota.cidadesPrioridade)
+        ? estadoRota.cidadesPrioridade.map(c => String(c || '').trim().toUpperCase())
+        : [];
+
+    // Reset básico
     rotaSelectBairro.innerHTML = '<option value="">Selecione para priorizar...</option>';
 
-    if (estadoRota.cidadesPrioridade.length === 0) {
+    if (!cidadesAtivas.length || !dadosOriginais.length) {
         rotaSelectBairro.disabled = true;
         return;
     }
 
+    const bairrosUnicos = new Set();
+
+    dadosOriginais.forEach(item => {
+        const cidade = String(item.cidade || '').trim().toUpperCase();
+        const bairro = String(item.bairro || 'OUTROS').trim().toUpperCase();
+
+        if (cidadesAtivas.includes(cidade)) {
+            bairrosUnicos.add(bairro);
+        }
+    });
+
+    let listaSorted = Array.from(bairrosUnicos).sort();
+
+    // Se por algum motivo não achar nenhum bairro, garante pelo menos OUTROS
+    if (!listaSorted.length) {
+        listaSorted = ['OUTROS'];
+    }
+
     rotaSelectBairro.disabled = false;
+
     listaSorted.forEach(bairro => {
         const opt = document.createElement('option');
         opt.value = bairro;
@@ -7102,7 +7128,7 @@ function renderizarTagsBairros() {
 
 // 6. Motor de Filtragem Principal e Renderização da Tabela
 function aplicarFiltrosGerais() {
-    // 1. Filtro de Fonte/Status (Cobertura)
+    // 1. Determina fonte (pesquisa x cobertura)
     let fonteSelecionada = '';
     for (const radio of rotaInputsFonte) {
         if (radio.checked) fonteSelecionada = radio.value;
@@ -7111,12 +7137,12 @@ function aplicarFiltrosGerais() {
     const incluirAtendidos = rotaCheckAtendidos ? rotaCheckAtendidos.checked : true;
     const incluirNaoAtendidos = rotaCheckNaoAtendidos ? rotaCheckNaoAtendidos.checked : true;
 
-    // 1.1. Filtra Status (apenas faz diferença na fonte "cobertura")
-    let filtrados = Array.isArray(estadoRota.dadosOriginais)
-        ? [...estadoRota.dadosOriginais]
+    const base = Array.isArray(estadoRota.dadosOriginais)
+        ? estadoRota.dadosOriginais
         : [];
 
-    filtrados = filtrados.filter(item => {
+    // 2. Filtra por status (apenas faz diferença na fonte "cobertura")
+    let filtrados = base.filter(item => {
         if (fonteSelecionada === 'cobertura') {
             if (item.encontrado && !incluirAtendidos) return false;
             if (!item.encontrado && !incluirNaoAtendidos) return false;
@@ -7124,89 +7150,64 @@ function aplicarFiltrosGerais() {
         return true;
     });
 
-    // 2. Filtro de Cidade
+    // 3. Filtro por cidade/bairro
     const cidadesPrio = Array.isArray(estadoRota.cidadesPrioridade)
-        ? estadoRota.cidadesPrioridade
+        ? estadoRota.cidadesPrioridade.map(c => String(c || '').trim().toUpperCase())
         : [];
 
-    if (cidadesPrio.length > 0) {
-        filtrados = filtrados.filter(i => cidadesPrio.includes((i.cidade || '').toString().toUpperCase()));
-    } else {
-        // Se nenhuma cidade selecionada:
-        // - Na fonte "pesquisa": mantém todos
-        // - Na fonte "cobertura": opcionalmente pode zerar, mas mantemos a lógica original
-        if (fonteSelecionada === 'cobertura') {
-            // mantém todos ou zera, conforme regra de negócio original.
-            // Aqui preferimos manter todos para não esconder dados sem motivo.
-        }
-    }
-
-    // 3. Filtro de Bairro (opcional)
     const bairrosPrio = Array.isArray(estadoRota.bairrosPrioridade)
-        ? estadoRota.bairrosPrioridade
+        ? estadoRota.bairrosPrioridade.map(b => String(b || '').trim().toUpperCase())
         : [];
 
-    if (bairrosPrio.length > 0) {
+    if (cidadesPrio.length) {
         filtrados = filtrados.filter(i =>
-            bairrosPrio.includes((i.bairro || '').toString().toUpperCase())
+            cidadesPrio.includes(String(i.cidade || '').trim().toUpperCase())
         );
     }
 
-    // 4. Ordenação Inteligente (versão segura)
-    filtrados.sort((a, b) => {
-        // Normaliza strings para evitar undefined em localeCompare
-        const cidadeA = (a.cidade || '').toString().toUpperCase();
-        const cidadeB = (b.cidade || '').toString().toUpperCase();
-        const bairroA = (a.bairro || '').toString().toUpperCase();
-        const bairroB = (b.bairro || '').toString().toUpperCase();
-        const enderecoA = (a.endereco || '').toString();
-        const enderecoB = (b.endereco || '').toString();
+    if (bairrosPrio.length) {
+        filtrados = filtrados.filter(i =>
+            bairrosPrio.includes(String(i.bairro || '').trim().toUpperCase())
+        );
+    }
 
-        // 4.1 Prioridade de Cidade
+    // 4. Ordenação inteligente, mas à prova de nulos
+    filtrados.sort((a, b) => {
+        const cidadeA = String(a.cidade || '').trim().toUpperCase();
+        const cidadeB = String(b.cidade || '').trim().toUpperCase();
+        const bairroA = String(a.bairro || '').trim().toUpperCase();
+        const bairroB = String(b.bairro || '').trim().toUpperCase();
+        const enderecoA = String(a.endereco || '');
+        const enderecoB = String(b.endereco || '');
+
+        // Prioridade de cidade
         const idxCidadeA = cidadesPrio.indexOf(cidadeA);
         const idxCidadeB = cidadesPrio.indexOf(cidadeB);
-        const prioCidadeA = idxCidadeA >= 0 ? idxCidadeA : 9999;
-        const prioCidadeB = idxCidadeB >= 0 ? idxCidadeB : 9999;
+        const prioCidadeA = idxCidadeA === -1 ? 9999 : idxCidadeA;
+        const prioCidadeB = idxCidadeB === -1 ? 9999 : idxCidadeB;
         if (prioCidadeA !== prioCidadeB) {
             return prioCidadeA - prioCidadeB;
         }
 
-        // 4.2 Prioridade de Bairro
+        // Prioridade de bairro
         const idxBairroA = bairrosPrio.indexOf(bairroA);
         const idxBairroB = bairrosPrio.indexOf(bairroB);
-        const prioBairroA = idxBairroA >= 0 ? idxBairroA : 9999;
-        const prioBairroB = idxBairroB >= 0 ? idxBairroB : 9999;
+        const prioBairroA = idxBairroA === -1 ? 9999 : idxBairroA;
+        const prioBairroB = idxBairroB === -1 ? 9999 : idxBairroB;
         if (prioBairroA !== prioBairroB) {
             return prioBairroA - prioBairroB;
         }
 
-        // 4.3 Nome do Bairro (se não houver prioridade definida)
+        // Nome do bairro como fallback
         if (bairroA !== bairroB) {
             return bairroA.localeCompare(bairroB);
         }
 
-        // 4.4 Proximidade geográfica (se ambos têm coordenadas válidas)
-        const latA = a.lat != null ? parseFloat(a.lat) : NaN;
-        const lonA = a.lon != null ? parseFloat(a.lon) : NaN;
-        const latB = b.lat != null ? parseFloat(b.lat) : NaN;
-        const lonB = b.lon != null ? parseFloat(b.lon) : NaN;
-
-        const coordsValidasA = !Number.isNaN(latA) && !Number.isNaN(lonA);
-        const coordsValidasB = !Number.isNaN(latB) && !Number.isNaN(lonB);
-
-        if (coordsValidasA && coordsValidasB) {
-            const diffA = Math.abs(latA) + Math.abs(lonA);
-            const diffB = Math.abs(latB) + Math.abs(lonB);
-            if (diffA !== diffB) {
-                return diffA - diffB;
-            }
-        }
-
-        // 4.5 Endereço (fallback)
+        // Endereço como último critério
         return enderecoA.localeCompare(enderecoB);
     });
 
-    // 5. Atualiza estado e re-renderiza
+    // 5. Atualiza estado e tabela
     estadoRota.clientesFiltrados = filtrados;
     renderizarTabelaRota();
 }
