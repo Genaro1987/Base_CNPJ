@@ -9428,13 +9428,25 @@ if (btnProcessar) {
 }
 
 function atualizarSelectRotas() {
+    // Em algumas versões da tela não existe o <select id="select-rotas-geradas">
+    if (!selectRotas) {
+        console.warn('[ROTA] select-rotas-geradas não encontrado; pulando atualização do combobox de rotas.');
+        return;
+    }
+
+    // Limpa opções atuais
     selectRotas.innerHTML = '';
+
+    // Preenche de acordo com as rotas geradas em memória
     rotasArmazenadas.forEach((clientes, numero) => {
-        // Pega o bairro predominante na rota para exibir no nome
-        const bairroPredominante = clientes[0].bairro || "Diversos";
+        if (!clientes || clientes.length === 0) return;
+
+        const bairroPredominante = (clientes[0].bairro || 'Diversos').toString();
         const option = document.createElement('option');
+
         option.value = numero;
         option.textContent = `Rota ${numero.toString().padStart(2, '0')} (${clientes.length} clientes) - Início: ${bairroPredominante}`;
+
         selectRotas.appendChild(option);
     });
 }
@@ -9608,6 +9620,11 @@ function ordenarHierarquico(listaTodos, latOrigem, lonOrigem) {
 const btnAbrirRotaMapa = document.getElementById('btn-abrir-rota-mapa');
 if (btnAbrirRotaMapa) {
   btnAbrirRotaMapa.addEventListener('click', async () => {
+    if (!selectRotas) {
+      console.warn('[ROTA] Botão Abrir Mapa sem select-rotas-geradas configurado.');
+      return;
+    }
+
     const rotaId = parseInt(selectRotas.value);
     if (!rotaId || !rotasArmazenadas.has(rotaId)) return;
 
