@@ -6986,12 +6986,10 @@ function popularSelectBairros() {
         ? estadoRota.dadosOriginais
         : [];
 
-    // Normaliza cidades selecionadas para UPPERCASE
     const cidadesAtivas = Array.isArray(estadoRota.cidadesPrioridade)
-        ? estadoRota.cidadesPrioridade.map(c => String(c || '').trim().toUpperCase())
+        ? estadoRota.cidadesPrioridade.filter(Boolean)
         : [];
 
-    // Reset do select
     rotaSelectBairro.innerHTML = '<option value="">Selecione para priorizar...</option>';
 
     if (!base.length || !cidadesAtivas.length) {
@@ -7002,22 +7000,15 @@ function popularSelectBairros() {
     const bairrosUnicos = new Set();
 
     base.forEach(item => {
-        const cidade = String(item.cidade || '').trim().toUpperCase();
-        if (!cidadesAtivas.includes(cidade)) return;
-
-        const bairro = String(item.bairro || 'OUTROS').trim().toUpperCase();
+        if (!cidadesAtivas.includes(item.cidade)) return;
+        const bairro = (item.bairro || 'OUTROS').toString();
         bairrosUnicos.add(bairro);
     });
 
     let listaSorted = Array.from(bairrosUnicos).sort();
-
-    // Se, por qualquer motivo, não encontrarmos nada, mantemos pelo menos OUTROS
-    if (!listaSorted.length) {
-        listaSorted = ['OUTROS'];
-    }
+    if (!listaSorted.length) listaSorted = ['OUTROS'];
 
     rotaSelectBairro.disabled = false;
-
     listaSorted.forEach(bairro => {
         const opt = document.createElement('option');
         opt.value = bairro;
@@ -7128,8 +7119,8 @@ function renderizarTagsBairros() {
 
 // 6. Motor de Filtragem Principal e Renderização da Tabela
 function aplicarFiltrosGerais() {
-    // 1. Determina a fonte selecionada (Pesquisa x Cobertura)
-    let fonteSelecionada = '';
+    // 1. Descobrir qual fonte está ativa (pesquisa x cobertura)
+    let fonteSelecionada = 'pesquisa';
     for (const radio of rotaInputsFonte) {
         if (radio.checked) fonteSelecionada = radio.value;
     }
@@ -7137,12 +7128,13 @@ function aplicarFiltrosGerais() {
     const incluirAtendidos = rotaCheckAtendidos ? rotaCheckAtendidos.checked : true;
     const incluirNaoAtendidos = rotaCheckNaoAtendidos ? rotaCheckNaoAtendidos.checked : true;
 
-    const base = Array.isArray(estadoRota.dadosOriginais)
-        ? estadoRota.dadosOriginais
+    // 2. Base de trabalho (clone da origem)
+    let filtrados = Array.isArray(estadoRota.dadosOriginais)
+        ? [...estadoRota.dadosOriginais]
         : [];
 
-    // 2. Filtro por status (somente relevante na fonte "cobertura")
-    let filtrados = base.filter(item => {
+    // 3. Filtro por status (só afeta a fonte "cobertura")
+    filtrados = filtrados.filter(item => {
         if (fonteSelecionada === 'cobertura') {
             if (item.encontrado && !incluirAtendidos) return false;
             if (!item.encontrado && !incluirNaoAtendidos) return false;
@@ -7150,81 +7142,69 @@ function aplicarFiltrosGerais() {
         return true;
     });
 
-    // 3. Filtros por cidade e bairro (defensivos)
-    const cidadesPrio = Array.isArray(estadoRota.cidadesPrioridade)
-        ? estadoRota.cidadesPrioridade.map(c => String(c || '').trim().toUpperCase()).filter(Boolean)
-        : [];
-
-    const bairrosPrio = Array.isArray(estadoRota.bairrosPrioridade)
-        ? estadoRota.bairrosPrioridade.map(b => String(b || '').trim().toUpperCase()).filter(Boolean)
-        : [];
-
-    // 3.1 Filtro por cidade – com fallback: se zerar tudo, mantemos a lista original
-    if (cidadesPrio.length) {
-        const filtradosCidade = filtrados.filter(item =>
-            cidadesPrio.includes(String(item.cidade || '').trim().toUpperCase())
+    // 4. Filtro por cidade (comparação direta)
+    if (estadoRota.cidadesPrioridade && estadoRota.cidadesPrioridade.length > 0) {
+        filtrados = filtrados.filter(i =>
+            estadoRota.cidadesPrioridade.includes(i.cidade)
         );
-
-        if (filtradosCidade.length > 0) {
-            filtrados = filtradosCidade;
-        } else {
-            console.warn('[ROTA] Nenhum registro bateu com as cidades selecionadas. Mantendo sem filtro de cidade.', { cidadesPrio });
+    } else {
+        // Regra antiga: se estiver em cobertura e nenhuma cidade selecionada, esvazia
+        if (fonteSelecionada === 'cobertura') {
+            filtrados = [];
         }
     }
 
-    // 3.2 Filtro por bairro – também com fallback
-    if (bairrosPrio.length) {
-        const filtradosBairro = filtrados.filter(item =>
-            bairrosPrio.includes(String(item.bairro || '').trim().toUpperCase())
+    // 5. Filtro por bairro (se houver prioridade definida)
+    if (estadoRota.bairrosPrioridade && estadoRota.bairrosPrioridade.length > 0) {
+        filtrados = filtrados.filter(i =>
+            estadoRota.bairrosPrioridade.includes(i.bairro)
         );
-
-        if (filtradosBairro.length > 0) {
-            filtrados = filtradosBairro;
-        } else {
-            console.warn('[ROTA] Nenhum registro bateu com os bairros selecionados. Mantendo sem filtro de bairro.', { bairrosPrio });
-        }
     }
 
-    // 4. Ordenação inteligente, à prova de nulos
+    // 6. Ordenação baseada em prioridade + nome de bairro/endereço (à prova de nulos)
     filtrados.sort((a, b) => {
-        const cidadesCfg = cidadesPrio;
-        const bairrosCfg = bairrosPrio;
+        const cidadesPrio = Array.isArray(estadoRota.cidadesPrioridade)
+            ? estadoRota.cidadesPrioridade
+            : [];
+        const bairrosPrio = Array.isArray(estadoRota.bairrosPrioridade)
+            ? estadoRota.bairrosPrioridade
+            : [];
 
-        const cidadeA = String(a.cidade || '').trim().toUpperCase();
-        const cidadeB = String(b.cidade || '').trim().toUpperCase();
-        const bairroA = String(a.bairro || '').trim().toUpperCase();
-        const bairroB = String(b.bairro || '').trim().toUpperCase();
-        const enderecoA = String(a.endereco || '');
-        const enderecoB = String(b.endereco || '');
+        const cidadeA = a.cidade || '';
+        const cidadeB = b.cidade || '';
+        const bairroA = a.bairro || '';
+        const bairroB = b.bairro || '';
+        const enderecoA = a.endereco || '';
+        const enderecoB = b.endereco || '';
 
-        // 4.1 prioridade de cidade
-        const idxCidadeA = cidadesCfg.indexOf(cidadeA);
-        const idxCidadeB = cidadesCfg.indexOf(cidadeB);
-        const prioCidadeA = idxCidadeA === -1 ? 9999 : idxCidadeA;
-        const prioCidadeB = idxCidadeB === -1 ? 9999 : idxCidadeB;
+        // 6.1 prioridade de cidade
+        const idxCidadeA = cidadesPrio.indexOf(cidadeA);
+        const idxCidadeB = cidadesPrio.indexOf(cidadeB);
+        const prioCidadeA = idxCidadeA >= 0 ? idxCidadeA : 9999;
+        const prioCidadeB = idxCidadeB >= 0 ? idxCidadeB : 9999;
         if (prioCidadeA !== prioCidadeB) {
             return prioCidadeA - prioCidadeB;
         }
 
-        // 4.2 prioridade de bairro
-        const idxBairroA = bairrosCfg.indexOf(bairroA);
-        const idxBairroB = bairrosCfg.indexOf(bairroB);
-        const prioBairroA = idxBairroA === -1 ? 9999 : idxBairroA;
-        const prioBairroB = idxBairroB === -1 ? 9999 : idxBairroB;
+        // 6.2 prioridade de bairro
+        const idxBairroA = bairrosPrio.indexOf(bairroA);
+        const idxBairroB = bairrosPrio.indexOf(bairroB);
+        const prioBairroA = idxBairroA >= 0 ? idxBairroA : 9999;
+        const prioBairroB = idxBairroB >= 0 ? idxBairroB : 9999;
         if (prioBairroA !== prioBairroB) {
             return prioBairroA - prioBairroB;
         }
 
-        // 4.3 nome do bairro como fallback
+        // 6.3 nome do bairro
         if (bairroA !== bairroB) {
             return bairroA.localeCompare(bairroB);
         }
 
-        // 4.4 endereço como critério final
+        // 6.4 endereço (fallback)
         return enderecoA.localeCompare(enderecoB);
     });
 
-    // 5. Atualiza estado e re-renderiza a tabela
+    // 7. Atualiza estado e re-renderiza
     estadoRota.clientesFiltrados = filtrados;
     renderizarTabelaRota();
 }
@@ -7419,13 +7399,18 @@ function renderizarTabelaRota() {
         // Botão remover sempre disponível
         const btnRemover = `<button class="btn-remover-rota" data-cnpj="${cli.cnpj}" style="padding:4px 8px; background:#ef4444; color:#fff; border:none; border-radius:4px; cursor:pointer; font-size:0.75rem; font-weight:600;">Remover</button>`;
 
+        const razaoSafe = cli.razao || cli.razao_social || 'Sem Nome';
+        const enderecoSafe = cli.endereco || '';
+        const bairroSafe = cli.bairro || '';
+        const cidadeSafe = cli.cidade || '';
+
         tr.innerHTML = `
             <td style="text-align:center;">${rotaBadge}</td>
             <td style="text-align:center;">${index + 1}</td>
-            <td>${cli.razao}</td>
-            <td style="font-size:0.85rem">${cli.endereco}</td>
-            <td>${cli.bairro}</td>
-            <td>${cli.cidade}</td>
+            <td>${razaoSafe}</td>
+            <td style="font-size:0.85rem">${enderecoSafe}</td>
+            <td>${bairroSafe}</td>
+            <td>${cidadeSafe}</td>
             <td style="text-align:center;">${statusIcon}</td>
             <td style="text-align:center;">${btnRemover}</td>
         `;
