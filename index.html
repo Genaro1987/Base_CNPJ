@@ -3007,14 +3007,43 @@ function atualizarResultados(dados) {
 
       // [NOVO] Atualiza a Rota de Vendas (INSERIR AQUI)
       if (typeof atualizarAbaRota === 'function') {
-          atualizarAbaRota(); 
+          atualizarAbaRota();
       }
+
+      // Sincroniza a aba "Rota de Vendas" com o novo resultado de pesquisa
+      sincronizarRotaComListaCNPJ(dados);
 
       // [NOVO] Atualiza aba Estatística (IBGE + Segmentos)
       if (typeof atualizarAbaEstatistica === 'function') {
           atualizarAbaEstatistica();
       }
 
+    }
+
+    function sincronizarRotaComListaCNPJ(listaEmpresas) {
+      if (!Array.isArray(listaEmpresas)) return;
+
+      // Limpa o estado de rota baseado em pesquisa anterior
+      estadoRota.dadosOriginais = listaEmpresas;
+      estadoRota.cidadesPrioridade = [];
+      estadoRota.bairrosPrioridade = [];
+      estadoRota.clientesFiltrados = [];
+      estadoRota.rotasGeradas = [];
+      estadoRota.clientesSelecionadosIds = new Set();
+
+      // Se existirem funções auxiliares para recarregar combos de cidade/bairro,
+      // invocá-las aqui. Ajustar para os nomes reais já existentes no arquivo.
+      if (typeof construirListaCidadesEBairros === 'function') {
+        construirListaCidadesEBairros(listaEmpresas);
+      }
+
+      if (typeof atualizarContadorRota === 'function') {
+        atualizarContadorRota(0);
+      }
+
+      if (rotaLinksContainer) {
+        rotaLinksContainer.innerHTML = '';
+      }
     }
 
     function consolidarRegistrosParaEnvio(registros) {
@@ -7508,7 +7537,12 @@ function exibirResumoRotas() {
     // Event listeners para os botões de abrir mapa
     document.querySelectorAll('.btn-abrir-mapa-rota').forEach(btn => {
         btn.addEventListener('click', (e) => {
-            const rotaId = parseInt(e.target.dataset.rotaId);
+            const btnEl = e.currentTarget;
+            const rotaId = parseInt(btnEl.dataset.rotaId, 10);
+            if (!Number.isFinite(rotaId) || isNaN(rotaId)) {
+                console.warn('[ROTA-MAPA] rotaId inválido no botão Abrir Mapa:', btnEl.dataset.rotaId);
+                return;
+            }
             abrirRotaNoGoogleMaps(rotaId);
         });
     });
@@ -7735,7 +7769,8 @@ async function abrirRotaNoGoogleMaps(rotaId) {
 
     if (!Array.isArray(clientesValidos) || clientesValidos.length === 0) {
         await mostrarAlerta(
-            'Nenhum cliente com endereço válido nesta rota. Valide os endereços antes de abrir o mapa.',
+            'Nenhum cliente com endereço válido nesta rota.\n\n' +
+            'Valide os endereços antes de abrir o mapa.',
             '⚠️ Sem Endereços Válidos'
         );
         return;
@@ -7749,7 +7784,7 @@ async function abrirRotaNoGoogleMaps(rotaId) {
 
     const nomeRota = rota.nome || `R${rota.id}`;
 
-    // Atualiza título e resumo
+    // Atualiza título e resumo do modal
     if (rotaMapaTitulo) {
         rotaMapaTitulo.textContent = `🗺️ Mapa da Rota ${nomeRota}`;
     }
@@ -7797,7 +7832,7 @@ async function abrirRotaNoGoogleMaps(rotaId) {
                 </div>
             `;
 
-            const marker = L.marker([lat, lon], { title: `${label} - ${cli.razao || ''}` });
+            const marker = L.marker([lat, lon], { title: `${label} - ${cli.razao || cli.razao_social || ''}` });
             marker.bindPopup(popupHtml);
 
             if (rotaMapaCamada) {
