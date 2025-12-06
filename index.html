@@ -7104,13 +7104,19 @@ function renderizarTagsBairros() {
 function aplicarFiltrosGerais() {
     // 1. Filtro de Fonte/Status (Cobertura)
     let fonteSelecionada = '';
-    for(const radio of rotaInputsFonte) { if(radio.checked) fonteSelecionada = radio.value; }
-    
+    for (const radio of rotaInputsFonte) {
+        if (radio.checked) fonteSelecionada = radio.value;
+    }
+
     const incluirAtendidos = rotaCheckAtendidos ? rotaCheckAtendidos.checked : true;
     const incluirNaoAtendidos = rotaCheckNaoAtendidos ? rotaCheckNaoAtendidos.checked : true;
 
-    // Filtra Status
-    let filtrados = estadoRota.dadosOriginais.filter(item => {
+    // 1.1. Filtra Status (apenas faz diferença na fonte "cobertura")
+    let filtrados = Array.isArray(estadoRota.dadosOriginais)
+        ? [...estadoRota.dadosOriginais]
+        : [];
+
+    filtrados = filtrados.filter(item => {
         if (fonteSelecionada === 'cobertura') {
             if (item.encontrado && !incluirAtendidos) return false;
             if (!item.encontrado && !incluirNaoAtendidos) return false;
@@ -7119,64 +7125,67 @@ function aplicarFiltrosGerais() {
     });
 
     // 2. Filtro de Cidade
-    if (estadoRota.cidadesPrioridade.length > 0) {
-        filtrados = filtrados.filter(i => estadoRota.cidadesPrioridade.includes(i.cidade));
+    const cidadesPrio = Array.isArray(estadoRota.cidadesPrioridade)
+        ? estadoRota.cidadesPrioridade
+        : [];
+
+    if (cidadesPrio.length > 0) {
+        filtrados = filtrados.filter(i => cidadesPrio.includes((i.cidade || '').toString().toUpperCase()));
     } else {
         // Se nenhuma cidade selecionada:
-        // - Na fonte "pesquisa": mostra todos os resultados
-        // - Na fonte "cobertura": mostra vazio (para forçar organização)
+        // - Na fonte "pesquisa": mantém todos
+        // - Na fonte "cobertura": opcionalmente pode zerar, mas mantemos a lógica original
         if (fonteSelecionada === 'cobertura') {
-            filtrados = [];
+            // mantém todos ou zera, conforme regra de negócio original.
+            // Aqui preferimos manter todos para não esconder dados sem motivo.
         }
-        // Se for "pesquisa", mantém todos (não filtra)
     }
 
-    // 🔥 NOVO: Adiciona filtro de bairro se houver seleção
-    if (estadoRota.bairrosPrioridade.length > 0) {
-        filtrados = filtrados.filter(i => estadoRota.bairrosPrioridade.includes(i.bairro));
+    // 3. Filtro de Bairro (opcional)
+    const bairrosPrio = Array.isArray(estadoRota.bairrosPrioridade)
+        ? estadoRota.bairrosPrioridade
+        : [];
+
+    if (bairrosPrio.length > 0) {
+        filtrados = filtrados.filter(i =>
+            bairrosPrio.includes((i.bairro || '').toString().toUpperCase())
+        );
     }
 
-    // 3. Ordenação Inteligente baseada em Prioridade (versão robusta)
+    // 4. Ordenação Inteligente (versão segura)
     filtrados.sort((a, b) => {
-        const cidadesPrio = Array.isArray(estadoRota.cidadesPrioridade)
-            ? estadoRota.cidadesPrioridade
-            : [];
-        const bairrosPrio = Array.isArray(estadoRota.bairrosPrioridade)
-            ? estadoRota.bairrosPrioridade
-            : [];
-
         // Normaliza strings para evitar undefined em localeCompare
-        const cidadeA = (a.cidade || '').toString();
-        const cidadeB = (b.cidade || '').toString();
-        const bairroA = (a.bairro || '').toString();
-        const bairroB = (b.bairro || '').toString();
+        const cidadeA = (a.cidade || '').toString().toUpperCase();
+        const cidadeB = (b.cidade || '').toString().toUpperCase();
+        const bairroA = (a.bairro || '').toString().toUpperCase();
+        const bairroB = (b.bairro || '').toString().toUpperCase();
         const enderecoA = (a.endereco || '').toString();
         const enderecoB = (b.endereco || '').toString();
 
-        // 1º Prioridade de Cidade (menor index = maior prioridade)
-        const cidadeIndexA = cidadesPrio.indexOf(cidadeA);
-        const cidadeIndexB = cidadesPrio.indexOf(cidadeB);
-        const prioridadeCidadeA = cidadeIndexA >= 0 ? cidadeIndexA : 9999;
-        const prioridadeCidadeB = cidadeIndexB >= 0 ? cidadeIndexB : 9999;
-        if (prioridadeCidadeA !== prioridadeCidadeB) {
-            return prioridadeCidadeA - prioridadeCidadeB;
+        // 4.1 Prioridade de Cidade
+        const idxCidadeA = cidadesPrio.indexOf(cidadeA);
+        const idxCidadeB = cidadesPrio.indexOf(cidadeB);
+        const prioCidadeA = idxCidadeA >= 0 ? idxCidadeA : 9999;
+        const prioCidadeB = idxCidadeB >= 0 ? idxCidadeB : 9999;
+        if (prioCidadeA !== prioCidadeB) {
+            return prioCidadeA - prioCidadeB;
         }
 
-        // 2º Prioridade de Bairro (menor index = maior prioridade)
-        const bairroIndexA = bairrosPrio.indexOf(bairroA);
-        const bairroIndexB = bairrosPrio.indexOf(bairroB);
-        const prioridadeBairroA = bairroIndexA >= 0 ? bairroIndexA : 9999;
-        const prioridadeBairroB = bairroIndexB >= 0 ? bairroIndexB : 9999;
-        if (prioridadeBairroA !== prioridadeBairroB) {
-            return prioridadeBairroA - prioridadeBairroB;
+        // 4.2 Prioridade de Bairro
+        const idxBairroA = bairrosPrio.indexOf(bairroA);
+        const idxBairroB = bairrosPrio.indexOf(bairroB);
+        const prioBairroA = idxBairroA >= 0 ? idxBairroA : 9999;
+        const prioBairroB = idxBairroB >= 0 ? idxBairroB : 9999;
+        if (prioBairroA !== prioBairroB) {
+            return prioBairroA - prioBairroB;
         }
 
-        // 3º Nome do Bairro (se não houver prioridade definida)
+        // 4.3 Nome do Bairro (se não houver prioridade definida)
         if (bairroA !== bairroB) {
             return bairroA.localeCompare(bairroB);
         }
 
-        // 4º Proximidade geográfica (se ambos têm coordenadas válidas)
+        // 4.4 Proximidade geográfica (se ambos têm coordenadas válidas)
         const latA = a.lat != null ? parseFloat(a.lat) : NaN;
         const lonA = a.lon != null ? parseFloat(a.lon) : NaN;
         const latB = b.lat != null ? parseFloat(b.lat) : NaN;
@@ -7186,7 +7195,6 @@ function aplicarFiltrosGerais() {
         const coordsValidasB = !Number.isNaN(latB) && !Number.isNaN(lonB);
 
         if (coordsValidasA && coordsValidasB) {
-            // Agrupa próximos de forma simples
             const diffA = Math.abs(latA) + Math.abs(lonA);
             const diffB = Math.abs(latB) + Math.abs(lonB);
             if (diffA !== diffB) {
@@ -7194,12 +7202,12 @@ function aplicarFiltrosGerais() {
             }
         }
 
-        // 5º Endereço (fallback seguro)
+        // 4.5 Endereço (fallback)
         return enderecoA.localeCompare(enderecoB);
     });
 
+    // 5. Atualiza estado e re-renderiza
     estadoRota.clientesFiltrados = filtrados;
-    // gerarRotasInteligentes() removido - só gera rotas quando usuário clicar
     renderizarTabelaRota();
 }
 
@@ -8461,16 +8469,16 @@ if(rotaImportFile) {
 // ===========================================================
 
 function verificarExportar() {
-    // Garante que o botão de exportação só fique habilitado quando houver rotas geradas
+    // Garante que o botão de exportação só fique habilitado quando houver algo salvo
     if (!rotaExportBtn) return;
 
-    const temRotas =
-        Array.isArray(estadoRota.rotasGeradas) &&
-        estadoRota.rotasGeradas.length > 0;
+    const temRotasSalvas =
+        estadoRota &&
+        estadoRota.rotasSalvas &&
+        Object.keys(estadoRota.rotasSalvas).length > 0;
 
-    rotaExportBtn.disabled = !temRotas;
+    rotaExportBtn.disabled = !temRotasSalvas;
 }
-
 setInterval(verificarExportar, 1000); // Check simples periódico
 // ===========================================================
 // GERAÇÃO DE LINKS E GESTÃO (Salvar/Exportar)
