@@ -1646,6 +1646,21 @@
              <!-- Provedor fixo: Google Maps -->
              <input type="hidden" id="rota-provedor-select" value="google">
              <input type="text" id="rota-origem" placeholder="Ponto de Partida (Opcional)" style="flex: 1; max-width: 250px;">
+             <!-- Configuração de tamanho das rotas -->
+             <div style="display:flex; flex-direction:column; gap:4px; max-width:120px;">
+               <label for="rota-limite-clientes" style="font-size:0.75rem; font-weight:600; color:#475569;">
+                 Clientes por rota
+               </label>
+               <input
+                 type="number"
+                 id="rota-limite-clientes"
+                 min="1"
+                 max="100"
+                 value="10"
+                 style="width:100%; padding:0.35rem 0.5rem; border-radius:8px; border:1px solid #cbd5e1; font-size:0.85rem;"
+                 title="Define o número máximo de clientes por rota gerada automaticamente"
+               >
+             </div>
              <button type="button" class="btn-primary" id="rota-gerar-btn" style="padding: 0.85rem 2rem; font-size: 1rem;">
                 📍 Validar Endereços
              </button>
@@ -2120,6 +2135,7 @@ const UF_LIST = [
     const segmentoSelect = document.getElementById('filtro-segmento');
     const tabRotaBtn = document.getElementById('tab-btn-rota');
     const rotaGerarBtn = document.getElementById('rota-gerar-btn');
+    const rotaLimiteClientesInput = document.getElementById('rota-limite-clientes');
     const rotaFiltroCidade = document.getElementById('rota-filtro-cidade');
     const rotaFiltroBairro = document.getElementById('rota-filtro-bairro');
     const rotaBairrosTags = document.getElementById('rota-bairros-tags'); // [NOVO]
@@ -7073,9 +7089,34 @@ function aplicarFiltrosGerais() {
     renderizarTabelaRota();
 }
 
+const LIMITE_ROTA_PADRAO = 10;
+const LIMITE_ROTA_MIN = 1;
+const LIMITE_ROTA_MAX = 100;
+
+function obterLimiteClientesPorRota() {
+    if (!rotaLimiteClientesInput) return LIMITE_ROTA_PADRAO;
+
+    let valor = parseInt(rotaLimiteClientesInput.value, 10);
+
+    if (!Number.isFinite(valor) || isNaN(valor)) {
+        valor = LIMITE_ROTA_PADRAO;
+    }
+
+    if (valor < LIMITE_ROTA_MIN) {
+        valor = LIMITE_ROTA_MIN;
+    } else if (valor > LIMITE_ROTA_MAX) {
+        valor = LIMITE_ROTA_MAX;
+    }
+
+    // Normaliza o valor no input para evitar inconsistência visual
+    rotaLimiteClientesInput.value = String(valor);
+
+    return valor;
+}
+
 // Algoritmo de Agrupamento Inteligente de Rotas
 function gerarRotasInteligentes() {
-    const limitePorRota = 10; // Google Maps - limite fixo de 10 clientes por rota
+    const limitePorRota = obterLimiteClientesPorRota(); // limite configurável pelo usuário
 
     // Filtra apenas clientes com coordenadas válidas
     const clientesValidos = estadoRota.clientesFiltrados.filter(c => c.validado && c.lat && c.lon);
@@ -7305,11 +7346,14 @@ function renderizarTabelaRota() {
             if (rotaId) {
                 const novaRota = estadoRota.rotasGeradas.find(r => r.id === rotaId);
                 if (novaRota) {
-                    // Verifica limite de 25 clientes (waypoints do Google Maps)
-                    // Como usamos coordenadas (curtas) ao invés de endereços (longos),
-                    // podemos usar o limite máximo de 25 waypoints do Google Maps
-                    if (novaRota.clientes.length >= 25) {
-                        await mostrarAlerta(`⚠️ A rota ${novaRota.nome || `R${novaRota.id}`} já tem 25 clientes (limite máximo do Google Maps).\n\nRemova um cliente primeiro ou escolha outra rota.`, '⚠️ Limite Atingido');
+                    const limitePorRota = obterLimiteClientesPorRota();
+
+                    if (novaRota.clientes.length >= limitePorRota) {
+                        await mostrarAlerta(
+                            `⚠️ A rota ${novaRota.nome || `R${novaRota.id}`} já atingiu o limite de ${limitePorRota} cliente(s).\n\n` +
+                            `Ajuste o parâmetro "Clientes por rota" no Planejador ou remova um cliente antes de adicionar outro.`,
+                            '⚠️ Limite da Rota Atingido'
+                        );
                         e.target.value = cliente.rotaId || '';
                         return;
                     }
@@ -7374,6 +7418,10 @@ function exibirResumoRotas() {
     html += '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; gap:10px;">';
     html += '<h4 style="margin:0; color:#b02232; font-size:0.95rem;">📍 Rotas Criadas</h4>';
     html += '</div>';
+    const limiteAtual = obterLimiteClientesPorRota();
+    html += `<p style="margin:0 0 0.5rem 0; font-size:0.8rem; color:#64748b;">
+           Limite configurado: <strong>${limiteAtual}</strong> cliente(s) por rota.
+         </p>`;
 
     // Se não há rotas, mostra mensagem
     if (estadoRota.rotasGeradas.length === 0) {
