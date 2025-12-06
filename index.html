@@ -2206,6 +2206,18 @@ const rotaCheckNaoAtendidos = document.getElementById('rota-check-nao-atendidos'
 };
 
     // ============================================
+    //  Normalização de texto para chaves (cidade/bairro)
+    // ============================================
+    function normalizarTextoChave(str) {
+      if (str == null) return '';
+      return String(str)
+        .normalize('NFD')                 // remove acentos
+        .replace(/[\u0300-\u036f]/g, '')
+        .trim()
+        .toUpperCase();
+    }
+
+    // ============================================
     //  DEBUG – ferramentas de auditoria da Rota
     // ============================================
     const DEBUG_ROTA = true;
@@ -7040,66 +7052,83 @@ function renderizarTagsCidades() {
 
 // 4. Popula Select de Bairros (Depende das Cidades selecionadas)
 function popularSelectBairros() {
-    if (!rotaSelectBairro) return;
+  if (!rotaSelectBairro) return;
 
-    const base = Array.isArray(estadoRota.dadosOriginais)
-        ? estadoRota.dadosOriginais
-        : [];
+  const base = Array.isArray(estadoRota.dadosOriginais)
+    ? estadoRota.dadosOriginais
+    : [];
 
-    const cidadesAtivas = Array.isArray(estadoRota.cidadesPrioridade)
-        ? estadoRota.cidadesPrioridade
-        : [];
+  const cidadesAtivasRaw = Array.isArray(estadoRota.cidadesPrioridade)
+    ? estadoRota.cidadesPrioridade
+    : [];
 
-    rotaDebug('popularSelectBairros - entrada', {
-        totalBase: base.length,
-        cidadesAtivas,
-        amostraCidadesBase: base.slice(0, 10).map(i => i.cidade)
+  const cidadesAtivasNorm = cidadesAtivasRaw.map(normalizarTextoChave);
+
+  rotaDebug('popularSelectBairros - entrada', {
+    totalBase: base.length,
+    cidadesAtivasRaw,
+    cidadesAtivasNorm,
+    amostraCidadesBase: base.slice(0, 10).map(i => i.cidade)
+  });
+
+  rotaSelectBairro.innerHTML = '<option value="">Selecione para priorizar...</option>';
+
+  if (!base.length || !cidadesAtivasNorm.length) {
+    rotaWarn('popularSelectBairros - sem base ou sem cidades ativas', {
+      totalBase: base.length,
+      cidadesAtivasRaw,
+      cidadesAtivasNorm
     });
+    rotaSelectBairro.disabled = true;
+    return;
+  }
 
-    rotaSelectBairro.innerHTML = '<option value="">Selecione para priorizar...</option>';
+  const bairrosUnicosNorm = new Map(); // key = bairro_norm, value = bairro original que vamos exibir
 
-    if (!base.length || !cidadesAtivas.length) {
-        rotaWarn('popularSelectBairros - sem base ou sem cidades ativas', {
-            totalBase: base.length,
-            cidadesAtivas
-        });
-        rotaSelectBairro.disabled = true;
-        return;
+  base.forEach(item => {
+    const cidadeItemNorm = normalizarTextoChave(item.cidade);
+    const bairroItem = (item.bairro || 'OUTROS').toString();
+    const bairroItemNorm = normalizarTextoChave(bairroItem);
+
+    const matchCidade = cidadesAtivasNorm.some(cf =>
+      cidadeItemNorm &&
+      (cidadeItemNorm === cf ||
+       cidadeItemNorm.includes(cf) ||
+       cf.includes(cidadeItemNorm))
+    );
+
+    if (matchCidade) {
+      if (!bairrosUnicosNorm.has(bairroItemNorm)) {
+        bairrosUnicosNorm.set(bairroItemNorm, bairroItem);
+      }
     }
+  });
 
-    const bairrosUnicos = new Set();
+  let listaSorted = Array.from(bairrosUnicosNorm.values()).sort();
 
-    base.forEach(item => {
-        const cidade = item.cidade || '';
-        const bairro = (item.bairro || 'OUTROS').toString();
-        if (cidadesAtivas.includes(cidade)) {
-            bairrosUnicos.add(bairro);
-        }
+  if (!listaSorted.length) {
+    rotaWarn('popularSelectBairros - nenhuma combinação encontrada, usando OUTROS', {
+      cidadesAtivasRaw,
+      cidadesAtivasNorm,
+      exemploBase: base.slice(0, 5).map(i => ({
+        cidade: i.cidade,
+        bairro: i.bairro
+      }))
     });
+    listaSorted = ['OUTROS'];
+  }
 
-    let listaSorted = Array.from(bairrosUnicos).sort();
-    if (!listaSorted.length) {
-        rotaWarn('popularSelectBairros - nenhuma combinação encontrada, usando OUTROS', {
-            cidadesAtivas,
-            exemploBase: base.slice(0, 5).map(i => ({
-                cidade: i.cidade,
-                bairro: i.bairro
-            }))
-        });
-        listaSorted = ['OUTROS'];
-    }
+  rotaDebug('popularSelectBairros - saida', {
+    bairrosEncontrados: listaSorted
+  });
 
-    rotaDebug('popularSelectBairros - saida', {
-        bairrosEncontrados: listaSorted
-    });
-
-    rotaSelectBairro.disabled = false;
-    listaSorted.forEach(bairro => {
-        const opt = document.createElement('option');
-        opt.value = bairro;
-        opt.textContent = bairro;
-        rotaSelectBairro.appendChild(opt);
-    });
+  rotaSelectBairro.disabled = false;
+  listaSorted.forEach(bairro => {
+    const opt = document.createElement('option');
+    opt.value = bairro;
+    opt.textContent = bairro;
+    rotaSelectBairro.appendChild(opt);
+  });
 }
 
 // 5. Listener: Adicionar Bairro (Tag com Prioridade)
@@ -7236,18 +7265,34 @@ function aplicarFiltrosGerais() {
             return true;
         });
 
-        // 3. Filtro por cidade
+        // --- Filtro por cidade (normalizado + contains) ---
         if (estadoRota.cidadesPrioridade && estadoRota.cidadesPrioridade.length > 0) {
-            filtrados = filtrados.filter(i =>
-                estadoRota.cidadesPrioridade.includes(i.cidade)
+          const cidadesFiltroNorm = estadoRota.cidadesPrioridade.map(normalizarTextoChave);
+
+          filtrados = filtrados.filter(item => {
+            const cidadeItemNorm = normalizarTextoChave(item.cidade);
+            return cidadesFiltroNorm.some(cf =>
+              cidadeItemNorm &&
+              (cidadeItemNorm === cf ||
+               cidadeItemNorm.includes(cf) ||
+               cf.includes(cidadeItemNorm))
             );
+          });
         }
 
-        // 4. Filtro por bairro
+        // --- Filtro por bairro (normalizado + contains) ---
         if (estadoRota.bairrosPrioridade && estadoRota.bairrosPrioridade.length > 0) {
-            filtrados = filtrados.filter(i =>
-                estadoRota.bairrosPrioridade.includes(i.bairro)
+          const bairrosFiltroNorm = estadoRota.bairrosPrioridade.map(normalizarTextoChave);
+
+          filtrados = filtrados.filter(item => {
+            const bairroItemNorm = normalizarTextoChave(item.bairro || 'OUTROS');
+            return bairrosFiltroNorm.some(bf =>
+              bairroItemNorm &&
+              (bairroItemNorm === bf ||
+               bairroItemNorm.includes(bf) ||
+               bf.includes(bairroItemNorm))
             );
+          });
         }
 
         rotaDebug('aplicarFiltrosGerais - posFiltros', {
