@@ -1751,6 +1751,34 @@
     </div>
   </div>
 
+  <!-- Modal para visualizar o Mapa da Rota -->
+  <div id="rota-mapa-modal" class="modal-overlay" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="rota-mapa-modal-titulo" style="max-width: 900px;">
+      <div class="modal-header">
+        <h3 id="rota-mapa-modal-titulo">🗺️ Mapa da Rota</h3>
+        <button type="button" class="modal-close" id="rota-mapa-modal-fechar" aria-label="Fechar">×</button>
+      </div>
+      <div class="modal-body">
+        <p id="rota-mapa-resumo" class="helper-text" style="margin-bottom: 0.75rem;">
+          Visualize a sequência dos clientes desta rota diretamente no mapa.
+        </p>
+        <div
+          id="rota-mapa"
+          style="
+            width: 100%;
+            height: 500px;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid #e2e8f0;
+          "
+        ></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-ghost" id="rota-mapa-modal-cancelar">Fechar</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal para Criar Nova Rota -->
   <div id="rota-nova-modal" class="modal-overlay" hidden>
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="rota-nova-modal-titulo" style="max-width: 500px;">
@@ -2157,6 +2185,11 @@ const rotaSelectBairro = document.getElementById('rota-select-bairro');
 const rotaTagsBairros = document.getElementById('rota-tags-bairros');
 const rotaCheckAtendidos = document.getElementById('rota-check-atendidos');
 const rotaCheckNaoAtendidos = document.getElementById('rota-check-nao-atendidos');
+    const rotaMapaModal = document.getElementById('rota-mapa-modal');
+    const rotaMapaModalFechar = document.getElementById('rota-mapa-modal-fechar');
+    const rotaMapaModalCancelar = document.getElementById('rota-mapa-modal-cancelar');
+    const rotaMapaTitulo = document.getElementById('rota-mapa-modal-titulo');
+    const rotaMapaResumo = document.getElementById('rota-mapa-resumo');
 
 
     let estadoRota = {
@@ -2175,6 +2208,27 @@ const rotaCheckNaoAtendidos = document.getElementById('rota-check-nao-atendidos'
     let selectedCnaes = new Map();
     let cnaeDebounce;
     let ultimoResultado = [];
+    let rotaMapaInstancia = null;
+    let rotaMapaCamada = null;
+
+    function fecharRotaMapaModal() {
+        if (!rotaMapaModal) return;
+        rotaMapaModal.hidden = true;
+    }
+
+    if (rotaMapaModalFechar) {
+        rotaMapaModalFechar.addEventListener('click', fecharRotaMapaModal);
+    }
+    if (rotaMapaModalCancelar) {
+        rotaMapaModalCancelar.addEventListener('click', fecharRotaMapaModal);
+    }
+    if (rotaMapaModal) {
+        rotaMapaModal.addEventListener('click', (evt) => {
+            if (evt.target === rotaMapaModal) {
+                fecharRotaMapaModal();
+            }
+        });
+    }
 
     // Variáveis da aba Estatística
     const tabEstatisticaBtn = document.getElementById('tab-btn-estatistica');
@@ -7659,37 +7713,113 @@ function atualizarContadorRota() {
 async function abrirRotaNoGoogleMaps(rotaId) {
     const rota = estadoRota.rotasGeradas.find(r => r.id === rotaId);
     if (!rota) {
-        mostrarAlerta('Rota não encontrada!', '❌ Erro');
+        await mostrarAlerta('Rota não encontrada!', '❌ Erro');
         return;
     }
 
     // Filtra apenas clientes validados COM coordenadas válidas
     const clientesValidos = rota.clientes.filter(c => {
-        // Verifica se está validado E se tem coordenadas válidas
         const lat = parseFloat(c.lat);
         const lon = parseFloat(c.lon);
-        const coordenadasValidas = c.lat && c.lon &&
-                                   !isNaN(lat) && !isNaN(lon) &&
-                                   Math.abs(lat) > 0.01 &&
-                                   Math.abs(lon) > 0.01 &&
-                                   lat >= -34 && lat <= 6 &&
-                                   lon >= -74 && lon <= -34;
-        return c.validado && coordenadasValidas;
+        const coordenadasValidas =
+            c.validado &&
+            c.lat && c.lon &&
+            !isNaN(lat) && !isNaN(lon) &&
+            Math.abs(lat) > 0.01 &&
+            Math.abs(lon) > 0.01 &&
+            lat >= -34 && lat <= 6 &&
+            lon >= -74 && lon <= -34;
+
+        return coordenadasValidas;
     });
 
-    if (clientesValidos.length === 0) {
-        mostrarAlerta('Nenhum cliente com endereço válido nesta rota!\n\nValide os endereços antes de abrir no mapa.', '⚠️ Sem Endereços Válidos');
+    if (!Array.isArray(clientesValidos) || clientesValidos.length === 0) {
+        await mostrarAlerta(
+            'Nenhum cliente com endereço válido nesta rota. Valide os endereços antes de abrir o mapa.',
+            '⚠️ Sem Endereços Válidos'
+        );
         return;
     }
 
-    // Pega localização atual do usuário para usar como origem
-    const coords = await obterLocalizacaoUsuario();
-    const latUser = coords ? coords.lat : null;
-    const lonUser = coords ? coords.lon : null;
+    if (!rotaMapaModal || !document.getElementById('rota-mapa')) {
+        console.error('[ROTA-MAPA] Modal ou container do mapa não encontrado.');
+        await mostrarAlerta('Erro ao abrir o mapa interno da rota.', '❌ Erro de Mapa');
+        return;
+    }
 
-    // Usa função gerarUrlGoogle que já configura tudo corretamente
-    const url = gerarUrlGoogle(clientesValidos, latUser, lonUser);
-    window.open(url, '_blank');
+    const nomeRota = rota.nome || `R${rota.id}`;
+
+    // Atualiza título e resumo
+    if (rotaMapaTitulo) {
+        rotaMapaTitulo.textContent = `🗺️ Mapa da Rota ${nomeRota}`;
+    }
+    if (rotaMapaResumo) {
+        rotaMapaResumo.textContent =
+            `${clientesValidos.length} cliente(s) com coordenadas válidas serão exibidos no mapa.`;
+    }
+
+    // Abre o modal
+    rotaMapaModal.hidden = false;
+
+    // Garante que o DIV esteja visível antes de inicializar o Leaflet
+    setTimeout(() => {
+        const divMapa = document.getElementById('rota-mapa');
+        if (!divMapa) return;
+
+        // Cria ou reutiliza o mapa
+        if (!rotaMapaInstancia) {
+            rotaMapaInstancia = L.map('rota-mapa');
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
+            }).addTo(rotaMapaInstancia);
+            rotaMapaCamada = L.layerGroup().addTo(rotaMapaInstancia);
+        } else {
+            if (rotaMapaCamada) {
+                rotaMapaCamada.clearLayers();
+            }
+        }
+
+        const pontos = [];
+
+        clientesValidos.forEach((cli, idx) => {
+            const lat = parseFloat(cli.lat);
+            const lon = parseFloat(cli.lon);
+
+            if (isNaN(lat) || isNaN(lon)) return;
+
+            const label = String(idx + 1);
+            const popupHtml = `
+                <div style="text-align:left;">
+                    <strong>${label}. ${cli.razao || cli.razao_social || 'Cliente'}</strong><br>
+                    <small>${cli.endereco || ''}, ${cli.bairro || ''}</small><br>
+                    <small>${cli.cidade || ''} / ${cli.uf || ''}</small><br>
+                    <small>CNPJ: ${cli.cnpj || ''}</small>
+                </div>
+            `;
+
+            const marker = L.marker([lat, lon], { title: `${label} - ${cli.razao || ''}` });
+            marker.bindPopup(popupHtml);
+
+            if (rotaMapaCamada) {
+                rotaMapaCamada.addLayer(marker);
+            }
+
+            pontos.push([lat, lon]);
+        });
+
+        // Desenha uma polyline ligando os pontos na ordem da rota
+        if (pontos.length > 1 && rotaMapaCamada) {
+            const linha = L.polyline(pontos, { weight: 4, opacity: 0.7 });
+            rotaMapaCamada.addLayer(linha);
+        }
+
+        // Ajusta o zoom/posição para enquadrar todos os pontos
+        if (pontos.length > 0 && rotaMapaInstancia) {
+            const bounds = L.latLngBounds(pontos);
+            rotaMapaInstancia.fitBounds(bounds, { padding: [40, 40] });
+            rotaMapaInstancia.invalidateSize();
+        }
+    }, 50);
 }
 
 // Função para limpar rota específica
