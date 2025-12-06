@@ -7742,13 +7742,39 @@ async function verificarCacheEndereco() {
 
         // Aplica coordenadas do cache
         for (const cliente of naoValidados) {
-            if (cache[cliente.cnpj]) {
-                cliente.lat = cache[cliente.cnpj].lat;
-                cliente.lon = cache[cliente.cnpj].lon;
-                cliente.validado = true;
-                noCache++;
-                console.log(`[CACHE] ✅ ${cliente.razao} - Já validado anteriormente`);
+            const cacheData = cache[cliente.cnpj];
+
+            if (cacheData) {
+                const latBruta = cacheData.lat;
+                const lonBruta = cacheData.lon;
+
+                const latNum = latBruta !== null && latBruta !== undefined ? parseFloat(latBruta) : NaN;
+                const lonNum = lonBruta !== null && lonBruta !== undefined ? parseFloat(lonBruta) : NaN;
+
+                const temCoordenadasValidas =
+                    !Number.isNaN(latNum) &&
+                    !Number.isNaN(lonNum) &&
+                    Math.abs(latNum) > 0.01 &&
+                    Math.abs(lonNum) > 0.01 &&
+                    latNum >= -34 && latNum <= 6 &&
+                    lonNum >= -74 && lonNum <= -34;
+
+                if (temCoordenadasValidas) {
+                    // Registro com coordenadas válidas no banco -> usa sem consumir API
+                    cliente.lat = latNum;
+                    cliente.lon = lonNum;
+                    cliente.validado = true;
+                    noCache++;
+                    console.log(`[CACHE] ✅ ${cliente.razao} - Coordenadas do banco reutilizadas (${latNum.toFixed(6)}, ${lonNum.toFixed(6)})`);
+                } else {
+                    // Registro encontrado na tabela, porém SEM coordenadas válidas
+                    // Regra de negócio: NÃO chamar API para este CNPJ
+                    cliente.validado = false;
+                    console.log(`[CACHE] ⚠️ ${cliente.razao} - Registro encontrado sem coordenadas válidas no banco. Mantido sem validação e fora da API.`);
+                    // NÃO adicionar em 'precisamAPI'
+                }
             } else {
+                // Não existe nenhum registro na tabela para este CNPJ -> candidato a API
                 precisamAPI.push(cliente);
             }
         }
@@ -7845,65 +7871,49 @@ async function validarEnderecosGoogleMaps(silencioso = false, cnpjsEspecificos =
         let cacheados = 0;
         let validados = 0;
         let invalidos = 0;
-        let jaTentados = 0; // NOVO: conta endereços que já foram tentados mas falharam
         let requisicoesAPI = 0;
         const paraValidarAPI = [];
         const paraCache = [];
 
-        // Aplica coordenadas do cache com validação rigorosa
         for (const cliente of naoValidados) {
-            if (cache[cliente.cnpj]) {
-                const cacheData = cache[cliente.cnpj];
+            const cacheData = cache[cliente.cnpj];
 
-                // CACHE NEGATIVO: Já foi tentado mas não validou
-                // NÃO tenta validar novamente para economizar API
-                if (cacheData.sucesso === false && cacheData.tentado === true) {
+            if (cacheData) {
+                const latBruta = cacheData.lat;
+                const lonBruta = cacheData.lon;
+
+                const latNum = latBruta !== null && latBruta !== undefined ? parseFloat(latBruta) : NaN;
+                const lonNum = lonBruta !== null && lonBruta !== undefined ? parseFloat(lonBruta) : NaN;
+
+                const temCoordenadasValidas =
+                    !Number.isNaN(latNum) &&
+                    !Number.isNaN(lonNum) &&
+                    Math.abs(latNum) > 0.01 &&
+                    Math.abs(lonNum) > 0.01 &&
+                    latNum >= -34 && latNum <= 6 &&
+                    lonNum >= -74 && lonNum <= -34;
+
+                if (temCoordenadasValidas) {
+                    cliente.lat = latNum;
+                    cliente.lon = lonNum;
+                    cliente.validado = true;
+                    cacheados++;
+                    validados++;
+                    console.log(`[CACHE] ✅ ${cliente.razao} - Coordenadas do banco reutilizadas (${latNum.toFixed(6)}, ${lonNum.toFixed(6)})`);
+                } else {
+                    // Registro com entrada na tabela mas sem coordenadas válidas
                     cliente.validado = false;
                     invalidos++;
-                    jaTentados++;
-                    console.log(`[CACHE] ⛔ ${cliente.razao} - Já tentado anteriormente sem sucesso, não validar novamente`);
-                    continue; // Pula para próximo cliente
-                }
-
-                // CACHE POSITIVO: Validado com sucesso
-                if (cacheData.sucesso === true) {
-                    const cachedLat = cacheData.lat;
-                    const cachedLon = cacheData.lon;
-                    const enderecoCache = cacheData.endereco_cache;
-
-                    // VALIDAÇÃO RIGOROSA: Verifica se as coordenadas do cache são válidas
-                    // Rejeita coordenadas nulas, zero ou muito próximas de zero (imprecisas)
-                    const coordenadasValidas = cachedLat && cachedLon &&
-                                              Math.abs(cachedLat) > 0.01 &&
-                                              Math.abs(cachedLon) > 0.01 &&
-                                              !isNaN(cachedLat) &&
-                                              !isNaN(cachedLon) &&
-                                              cachedLat >= -34 && cachedLat <= 6 &&
-                                              cachedLon >= -74 && cachedLon <= -34;
-
-                    if (coordenadasValidas) {
-                        cliente.lat = cachedLat;
-                        cliente.lon = cachedLon;
-                        cliente.validado = true;
-                        cacheados++;
-                        validados++;
-                        console.log(`[CACHE] ✅ ${cliente.razao} - Usando cache (${cachedLat.toFixed(6)}, ${cachedLon.toFixed(6)})`);
-                        if (enderecoCache && enderecoCache !== cliente.endereco) {
-                            console.log(`[CACHE]    Endereço: ${cliente.endereco} ≈ ${enderecoCache}`);
-                        }
-                    } else {
-                        // Coordenadas inválidas no cache - precisa revalidar
-                        console.log(`[CACHE] ❌ ${cliente.razao} - Cache inválido (lat:${cachedLat}, lon:${cachedLon}), revalidando...`);
-                        paraValidarAPI.push(cliente);
-                    }
+                    console.log(`[CACHE] ⛔ ${cliente.razao} - Registro sem coordenadas válidas. Não será enviado à API por regra de negócio.`);
+                    // NÃO incluir em paraValidarAPI
                 }
             } else {
-                console.log(`[CACHE] ⚪ ${cliente.razao} - Não encontrado no cache`);
+                // Não tem registro algum -> candidato a API
                 paraValidarAPI.push(cliente);
             }
         }
 
-        console.log(`[CACHE] Resumo: ${cacheados} validados do cache, ${jaTentados} já tentados (não validar), ${paraValidarAPI.length} precisam validar via API`);
+        console.log(`[CACHE] Resumo: ${cacheados} validados com cache, ${invalidos} sem coordenadas válidas, ${paraValidarAPI.length} candidatos à API.`);
 
         // 3. VALIDA OS QUE NÃO ESTÃO NO CACHE
         if (paraValidarAPI.length > 0) {
@@ -8766,9 +8776,11 @@ function calcularDistanciaSimples(lat1, lon1, lat2, lon2) {
   }
 
 
-// --- Variável global para armazenar a localização do usuário ---
-let usuarioLat = null;
-let usuarioLon = null;
+// --- Variáveis globais para armazenar a localização do usuário ---
+// Usamos 'var' para evitar problemas de TDZ (temporal dead zone) ao chamar funções
+// que utilizam essas variáveis antes da linha de declaração.
+var usuarioLat = null;
+var usuarioLon = null;
 
 /* * Função: obterLocalizacaoUsuario
  * Descrição: Promessa que retorna a lat/lon do navegador
