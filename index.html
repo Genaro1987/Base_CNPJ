@@ -7846,7 +7846,7 @@ function exibirResumoRotas() {
 
     // Event listeners para os botões de abrir mapa
     document.querySelectorAll('.btn-abrir-mapa-rota').forEach(btn => {
-        btn.addEventListener('click', (e) => {
+        btn.addEventListener('click', async (e) => {
             const target = e.currentTarget || e.target;
             const rotaId = parseInt(target.dataset.rotaId, 10);
 
@@ -7857,7 +7857,41 @@ function exibirResumoRotas() {
                 return;
             }
 
-            abrirRotaNoGoogleMaps(rotaId);
+            // Abre a nova aba/janela SINCRONAMENTE no clique
+            const novaJanela = window.open('', '_blank');
+            if (!novaJanela) {
+                // Popup bloqueado pelo navegador
+                if (typeof mostrarAlerta === 'function') {
+                    mostrarAlerta(
+                        'O navegador bloqueou a abertura do Google Maps. Libere pop-ups para este site e tente novamente.',
+                        '⚠️ Atenção'
+                    );
+                } else {
+                    alert('O navegador bloqueou a abertura do Google Maps. Libere pop-ups para este site.');
+                }
+                return;
+            }
+
+            try {
+                const url = await abrirRotaNoGoogleMaps(rotaId);
+
+                if (!url) {
+                    // Algo falhou na montagem da rota (sem clientes válidos, etc.)
+                    novaJanela.close();
+                    return;
+                }
+
+                // Agora que temos a URL, redireciona a janela já aberta
+                novaJanela.location.href = url;
+            } catch (err) {
+                console.error('[ROTA-MAPA] Erro ao montar rota no Google Maps', err);
+                novaJanela.close();
+                if (typeof mostrarAlerta === 'function') {
+                    mostrarAlerta('Erro ao montar a rota no Google Maps.', '❌ Erro');
+                } else {
+                    alert('Erro ao montar a rota no Google Maps.');
+                }
+            }
         });
     });
 
@@ -8061,8 +8095,12 @@ function atualizarContadorRota() {
 async function abrirRotaNoGoogleMaps(rotaId) {
     const rota = estadoRota.rotasGeradas.find(r => r.id === rotaId);
     if (!rota) {
-        await mostrarAlerta('Rota não encontrada!', '❌ Erro');
-        return;
+        if (typeof mostrarAlerta === 'function') {
+            mostrarAlerta('Rota não encontrada!', '❌ Erro');
+        } else {
+            alert('Rota não encontrada!');
+        }
+        return null;
     }
 
     // Filtra apenas clientes validados COM coordenadas válidas
@@ -8070,105 +8108,35 @@ async function abrirRotaNoGoogleMaps(rotaId) {
         const lat = parseFloat(c.lat);
         const lon = parseFloat(c.lon);
         const coordenadasValidas =
-            c.validado &&
             c.lat && c.lon &&
             !isNaN(lat) && !isNaN(lon) &&
             Math.abs(lat) > 0.01 &&
             Math.abs(lon) > 0.01 &&
             lat >= -34 && lat <= 6 &&
             lon >= -74 && lon <= -34;
-
-        return coordenadasValidas;
+        return c.validado && coordenadasValidas;
     });
 
-    if (!Array.isArray(clientesValidos) || clientesValidos.length === 0) {
-        await mostrarAlerta(
-            'Nenhum cliente com endereço válido nesta rota.\n\n' +
-            'Valide os endereços antes de abrir o mapa.',
-            '⚠️ Sem Endereços Válidos'
-        );
-        return;
-    }
-
-    if (!rotaMapaModal || !document.getElementById('rota-mapa')) {
-        console.error('[ROTA-MAPA] Modal ou container do mapa não encontrado.');
-        await mostrarAlerta('Erro ao abrir o mapa interno da rota.', '❌ Erro de Mapa');
-        return;
-    }
-
-    const nomeRota = rota.nome || `R${rota.id}`;
-
-    // Atualiza título e resumo do modal
-    if (rotaMapaTitulo) {
-        rotaMapaTitulo.textContent = `🗺️ Mapa da Rota ${nomeRota}`;
-    }
-    if (rotaMapaResumo) {
-        rotaMapaResumo.textContent =
-            `${clientesValidos.length} cliente(s) com coordenadas válidas serão exibidos no mapa.`;
-    }
-
-    // Abre o modal
-    rotaMapaModal.hidden = false;
-
-    // Garante que o DIV esteja visível antes de inicializar o Leaflet
-    setTimeout(() => {
-        const divMapa = document.getElementById('rota-mapa');
-        if (!divMapa) return;
-
-        // Cria ou reutiliza o mapa
-        if (!rotaMapaInstancia) {
-            rotaMapaInstancia = L.map('rota-mapa');
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-                attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
-            }).addTo(rotaMapaInstancia);
-            rotaMapaCamada = L.layerGroup().addTo(rotaMapaInstancia);
+    if (clientesValidos.length === 0) {
+        if (typeof mostrarAlerta === 'function') {
+            mostrarAlerta(
+                'Nenhum cliente com endereço válido nesta rota. Revise a validação dos endereços antes de abrir no mapa.',
+                '⚠️ Sem Endereços Válidos'
+            );
         } else {
-            if (rotaMapaCamada) {
-                rotaMapaCamada.clearLayers();
-            }
+            alert('Nenhum cliente com endereço válido nesta rota.');
         }
+        return null;
+    }
 
-        const pontos = [];
+    // Pega localização atual do usuário (pode retornar null)
+    const coords = await obterLocalizacaoUsuario();
+    const latUser = coords ? coords.lat : null;
+    const lonUser = coords ? coords.lon : null;
 
-        clientesValidos.forEach((cli, idx) => {
-            const lat = parseFloat(cli.lat);
-            const lon = parseFloat(cli.lon);
-
-            if (isNaN(lat) || isNaN(lon)) return;
-
-            const label = String(idx + 1);
-            const popupHtml = `
-                <div style="text-align:left;">
-                    <strong>${label}. ${cli.razao || cli.razao_social || 'Cliente'}</strong><br>
-                    <small>${cli.endereco || ''}, ${cli.bairro || ''}</small><br>
-                    <small>${cli.cidade || ''} / ${cli.uf || ''}</small><br>
-                    <small>CNPJ: ${cli.cnpj || ''}</small>
-                </div>
-            `;
-
-            const marker = L.marker([lat, lon], { title: `${label} - ${cli.razao || cli.razao_social || ''}` });
-            marker.bindPopup(popupHtml);
-
-            if (rotaMapaCamada) {
-                rotaMapaCamada.addLayer(marker);
-            }
-
-            pontos.push([lat, lon]);
-        });
-
-        // Desenha uma polyline ligando os pontos na ordem da rota
-        if (pontos.length > 1 && rotaMapaCamada) {
-            const linha = L.polyline(pontos, { weight: 4, opacity: 0.7 });
-            rotaMapaCamada.addLayer(linha);
-        }
-
-        // Ajusta o zoom/posição para enquadrar todos os pontos
-        if (pontos.length > 0 && rotaMapaInstancia) {
-            const bounds = L.latLngBounds(pontos);
-            rotaMapaInstancia.fitBounds(bounds, { padding: [40, 40] });
-            rotaMapaInstancia.invalidateSize();
-        }
-    }, 50);
+    // Usa a função já existente que monta a URL com coordenadas
+    const url = gerarUrlGoogle(clientesValidos, latUser, lonUser);
+    return url;
 }
 
 // Função para limpar rota específica
