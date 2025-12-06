@@ -7136,73 +7136,85 @@ function popularSelectBairros() {
     ? estadoRota.cidadesPrioridade
     : [];
 
-  const cidadesAtivasNorm = cidadesAtivasRaw.map(normalizarTextoChave);
+  const cidadesAtivasNorm = cidadesAtivasRaw
+    .map(normalizarTextoChave)
+    .filter(Boolean);
 
-  rotaDebug('popularSelectBairros - entrada', {
-    totalBase: base.length,
-    cidadesAtivasRaw,
-    cidadesAtivasNorm,
-    amostraCidadesBase: base.slice(0, 10).map(i => i.cidade)
-  });
+  if (typeof rotaDebug === 'function') {
+    rotaDebug('popularSelectBairros - entrada', {
+      totalBase: base.length,
+      cidadesAtivasRaw,
+      cidadesAtivasNorm,
+      amostraCidadesBase: base.slice(0, 10).map(i => i.cidade)
+    });
+  }
 
   rotaSelectBairro.innerHTML = '<option value="">Selecione para priorizar...</option>';
 
   if (!base.length || !cidadesAtivasNorm.length) {
-    rotaWarn('popularSelectBairros - sem base ou sem cidades ativas', {
-      totalBase: base.length,
-      cidadesAtivasRaw,
-      cidadesAtivasNorm
-    });
+    if (typeof rotaWarn === 'function') {
+      rotaWarn('popularSelectBairros - sem base ou sem cidades ativas', {
+        totalBase: base.length,
+        cidadesAtivasRaw,
+        cidadesAtivasNorm
+      });
+    }
     rotaSelectBairro.disabled = true;
     return;
   }
 
-  const bairrosUnicosNorm = new Map(); // key = bairro_norm, value = bairro original que vamos exibir
+  const bairrosNormToLabel = new Map();
 
-  base.forEach(item => {
+  for (const item of base) {
     const cidadeItemNorm = normalizarTextoChave(item.cidade);
-    const bairroItem = (item.bairro || 'OUTROS').toString();
-    const bairroItemNorm = normalizarTextoChave(bairroItem);
+    if (!cidadeItemNorm) continue;
 
     const matchCidade = cidadesAtivasNorm.some(cf =>
-      cidadeItemNorm &&
-      (cidadeItemNorm === cf ||
-       cidadeItemNorm.includes(cf) ||
-       cf.includes(cidadeItemNorm))
+      cidadeItemNorm === cf ||
+      cidadeItemNorm.includes(cf) ||
+      cf.includes(cidadeItemNorm)
     );
+    if (!matchCidade) continue;
 
-    if (matchCidade) {
-      if (!bairrosUnicosNorm.has(bairroItemNorm)) {
-        bairrosUnicosNorm.set(bairroItemNorm, bairroItem);
-      }
+    const bairroLabel = (item.bairro || 'OUTROS').toString();
+    const bairroNorm = normalizarTextoChave(bairroLabel);
+
+    if (!bairrosNormToLabel.has(bairroNorm)) {
+      bairrosNormToLabel.set(bairroNorm, bairroLabel);
     }
-  });
+  }
 
-  let listaSorted = Array.from(bairrosUnicosNorm.values()).sort();
+  let listaSorted = Array.from(bairrosNormToLabel.values()).sort((a, b) =>
+    a.toString().localeCompare(b.toString())
+  );
 
   if (!listaSorted.length) {
-    rotaWarn('popularSelectBairros - nenhuma combinação encontrada, usando OUTROS', {
-      cidadesAtivasRaw,
-      cidadesAtivasNorm,
-      exemploBase: base.slice(0, 5).map(i => ({
-        cidade: i.cidade,
-        bairro: i.bairro
-      }))
-    });
+    if (typeof rotaWarn === 'function') {
+      rotaWarn('popularSelectBairros - nenhuma combinação encontrada, usando OUTROS', {
+        cidadesAtivasRaw,
+        cidadesAtivasNorm,
+        exemploBase: base.slice(0, 5).map(i => ({
+          cidade: i.cidade,
+          bairro: i.bairro
+        }))
+      });
+    }
     listaSorted = ['OUTROS'];
   }
 
-  rotaDebug('popularSelectBairros - saida', {
-    bairrosEncontrados: listaSorted
-  });
+  if (typeof rotaDebug === 'function') {
+    rotaDebug('popularSelectBairros - saida', {
+      bairrosEncontrados: listaSorted
+    });
+  }
 
   rotaSelectBairro.disabled = false;
-  listaSorted.forEach(bairro => {
+  for (const bairro of listaSorted) {
     const opt = document.createElement('option');
     opt.value = bairro;
     opt.textContent = bairro;
     rotaSelectBairro.appendChild(opt);
-  });
+  }
 }
 
 // 5. Listener: Adicionar Bairro (Tag com Prioridade)
@@ -7307,126 +7319,113 @@ function renderizarTagsBairros() {
 
 // 6. Motor de Filtragem Principal e Renderização da Tabela
 function aplicarFiltrosGerais() {
-    try {
-        // 1. Fonte
-        let fonteSelecionada = 'pesquisa';
-        for (const radio of rotaInputsFonte) {
-            if (radio.checked) fonteSelecionada = radio.value;
-        }
-
-        const incluirAtendidos = rotaCheckAtendidos ? rotaCheckAtendidos.checked : true;
-        const incluirNaoAtendidos = rotaCheckNaoAtendidos ? rotaCheckNaoAtendidos.checked : true;
-
-        let filtrados = Array.isArray(estadoRota.dadosOriginais)
-            ? [...estadoRota.dadosOriginais]
-            : [];
-
-        rotaDebug('aplicarFiltrosGerais - entrada', {
-            fonteSelecionada,
-            incluirAtendidos,
-            incluirNaoAtendidos,
-            totalBase: filtrados.length,
-            cidadesPrioridade: estadoRota.cidadesPrioridade,
-            bairrosPrioridade: estadoRota.bairrosPrioridade
-        });
-
-        // 2. Filtro por status (cobertura)
-        filtrados = filtrados.filter(item => {
-            if (fonteSelecionada === 'cobertura') {
-                if (item.encontrado && !incluirAtendidos) return false;
-                if (!item.encontrado && !incluirNaoAtendidos) return false;
-            }
-            return true;
-        });
-
-        // --- Filtro por cidade (normalizado + contains) ---
-        if (estadoRota.cidadesPrioridade && estadoRota.cidadesPrioridade.length > 0) {
-          const cidadesFiltroNorm = estadoRota.cidadesPrioridade.map(normalizarTextoChave);
-
-          filtrados = filtrados.filter(item => {
-            const cidadeItemNorm = normalizarTextoChave(item.cidade);
-            return cidadesFiltroNorm.some(cf =>
-              cidadeItemNorm &&
-              (cidadeItemNorm === cf ||
-               cidadeItemNorm.includes(cf) ||
-               cf.includes(cidadeItemNorm))
-            );
-          });
-        }
-
-        // --- Filtro por bairro (normalizado + contains) ---
-        if (estadoRota.bairrosPrioridade && estadoRota.bairrosPrioridade.length > 0) {
-          const bairrosFiltroNorm = estadoRota.bairrosPrioridade.map(normalizarTextoChave);
-
-          filtrados = filtrados.filter(item => {
-            const bairroItemNorm = normalizarTextoChave(item.bairro || 'OUTROS');
-            return bairrosFiltroNorm.some(bf =>
-              bairroItemNorm &&
-              (bairroItemNorm === bf ||
-               bairroItemNorm.includes(bf) ||
-               bf.includes(bairroItemNorm))
-            );
-          });
-        }
-
-        rotaDebug('aplicarFiltrosGerais - posFiltros', {
-            totalFiltrados: filtrados.length,
-            amostraCidades: Array.from(new Set(filtrados.map(i => i.cidade))).slice(0, 10),
-            amostraBairros: Array.from(new Set(filtrados.map(i => i.bairro))).slice(0, 10)
-        });
-
-        // 5. Ordenação simples e segura
-        filtrados.sort((a, b) => {
-            const cidadesPrio = Array.isArray(estadoRota.cidadesPrioridade)
-                ? estadoRota.cidadesPrioridade
-                : [];
-            const bairrosPrio = Array.isArray(estadoRota.bairrosPrioridade)
-                ? estadoRota.bairrosPrioridade
-                : [];
-
-            const cidadeA = a.cidade || '';
-            const cidadeB = b.cidade || '';
-            const bairroA = a.bairro || '';
-            const bairroB = b.bairro || '';
-            const enderecoA = a.endereco || '';
-            const enderecoB = b.endereco || '';
-
-            const idxCidadeA = cidadesPrio.indexOf(cidadeA);
-            const idxCidadeB = cidadesPrio.indexOf(cidadeB);
-            const prioCidadeA = idxCidadeA >= 0 ? idxCidadeA : 9999;
-            const prioCidadeB = idxCidadeB >= 0 ? idxCidadeB : 9999;
-            if (prioCidadeA !== prioCidadeB) {
-                return prioCidadeA - prioCidadeB;
-            }
-
-            const idxBairroA = bairrosPrio.indexOf(bairroA);
-            const idxBairroB = bairrosPrio.indexOf(bairroB);
-            const prioBairroA = idxBairroA >= 0 ? idxBairroA : 9999;
-            const prioBairroB = idxBairroB >= 0 ? idxBairroB : 9999;
-            if (prioBairroA !== prioBairroB) {
-                return prioBairroA - prioBairroB;
-            }
-
-            if (bairroA !== bairroB) {
-                return bairroA.localeCompare(bairroB);
-            }
-            return enderecoA.localeCompare(enderecoB);
-        });
-
-        rotaDebug('aplicarFiltrosGerais - saida', {
-            totalFiltrados: filtrados.length,
-            exemploPrimeiro: filtrados[0]
-        });
-
-        estadoRota.clientesFiltrados = filtrados;
-        renderizarTabelaRota();
-    } catch (err) {
-        rotaError('aplicarFiltrosGerais - exception', err, {
-            exemploDadosOriginais: Array.isArray(estadoRota.dadosOriginais) && estadoRota.dadosOriginais.length > 0
-                ? estadoRota.dadosOriginais[0]
-                : null
-        });
+  try {
+    // 1. Fonte de dados selecionada (Pesquisa x Cobertura)
+    let fonteSelecionada = 'pesquisa';
+    for (const radio of rotaInputsFonte) {
+      if (radio.checked) {
+        fonteSelecionada = radio.value;
+        break;
+      }
     }
+
+    const incluirAtendidos = rotaCheckAtendidos ? rotaCheckAtendidos.checked : true;
+    const incluirNaoAtendidos = rotaCheckNaoAtendidos ? rotaCheckNaoAtendidos.checked : true;
+
+    // 2. Base inicial (clone dos dados normalizados)
+    let filtrados = Array.isArray(estadoRota.dadosOriginais)
+      ? [...estadoRota.dadosOriginais]
+      : [];
+
+    if (typeof rotaDebug === 'function') {
+      rotaDebug('aplicarFiltrosGerais - entrada', {
+        fonteSelecionada,
+        incluirAtendidos,
+        incluirNaoAtendidos,
+        totalBase: filtrados.length,
+        cidadesPrioridade: estadoRota.cidadesPrioridade,
+        bairrosPrioridade: estadoRota.bairrosPrioridade
+      });
+    }
+
+    // 3. Filtro por status (somente relevante na fonte "cobertura")
+    filtrados = filtrados.filter(item => {
+      if (fonteSelecionada === 'cobertura') {
+        if (item.encontrado && !incluirAtendidos) return false;
+        if (!item.encontrado && !incluirNaoAtendidos) return false;
+      }
+      return true;
+    });
+
+    // 4. Filtro por cidade (normalizado + contains)
+    const cidadesFiltroNorm = (estadoRota.cidadesPrioridade || [])
+      .map(normalizarTextoChave)
+      .filter(Boolean);
+
+    if (cidadesFiltroNorm.length > 0) {
+      filtrados = filtrados.filter(item => {
+        const cidadeItemNorm = normalizarTextoChave(item.cidade);
+        if (!cidadeItemNorm) return false;
+        return cidadesFiltroNorm.some(cf =>
+          cidadeItemNorm === cf ||
+          cidadeItemNorm.includes(cf) ||
+          cf.includes(cidadeItemNorm)
+        );
+      });
+    }
+
+    // 5. Filtro por bairro (normalizado + contains)
+    const bairrosFiltroNorm = (estadoRota.bairrosPrioridade || [])
+      .map(normalizarTextoChave)
+      .filter(Boolean);
+
+    if (bairrosFiltroNorm.length > 0) {
+      filtrados = filtrados.filter(item => {
+        const bairroItemNorm = normalizarTextoChave(item.bairro || 'OUTROS');
+        if (!bairroItemNorm) return false;
+        return bairrosFiltroNorm.some(bf =>
+          bairroItemNorm === bf ||
+          bairroItemNorm.includes(bf) ||
+          bf.includes(bairroItemNorm)
+        );
+      });
+    }
+
+    // 6. Ordenação simples: cidade -> bairro -> razão
+    filtrados.sort((a, b) => {
+      const cidadeA = normalizarTextoChave(a.cidade);
+      const cidadeB = normalizarTextoChave(b.cidade);
+      if (cidadeA !== cidadeB) {
+        return cidadeA.localeCompare(cidadeB);
+      }
+
+      const bairroA = normalizarTextoChave(a.bairro);
+      const bairroB = normalizarTextoChave(b.bairro);
+      if (bairroA !== bairroB) {
+        return bairroA.localeCompare(bairroB);
+      }
+
+      const razaoA = (a.razao || '').toString().toUpperCase();
+      const razaoB = (b.razao || '').toString().toUpperCase();
+      return razaoA.localeCompare(razaoB);
+    });
+
+    if (typeof rotaDebug === 'function') {
+      rotaDebug('aplicarFiltrosGerais - saida', {
+        totalFiltrados: filtrados.length,
+        exemploPrimeiro: filtrados[0] || null
+      });
+    }
+
+    estadoRota.clientesFiltrados = filtrados;
+    renderizarTabelaRota();
+  } catch (err) {
+    if (typeof rotaError === 'function') {
+      rotaError('aplicarFiltrosGerais - exception', err);
+    } else {
+      console.error('[ROTA-ERROR] aplicarFiltrosGerais - exception', err);
+    }
+  }
 }
 
 const LIMITE_ROTA_PADRAO = 10;
