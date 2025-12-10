@@ -233,7 +233,8 @@ app.get('/buscar', async function (req, res) {
         v.telefone_2, 
         v.email AS correio_eletronico,
         
-        v.cnae_fiscal_principal, 
+        v.cnae_fiscal_principal,
+        v.porte_empresa,
         v.situacao_inscricao AS situacao_cadastral,
         
         v.motivo_situacao_cadastral,
