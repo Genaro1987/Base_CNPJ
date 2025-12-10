@@ -102,6 +102,28 @@
       border: 1px solid var(--gf2-border);
     }
 
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.25rem;
+      margin-top: 1.25rem;
+    }
+
+    .subcard {
+      background: var(--gf2-neutral);
+      border: 1px solid var(--gf2-border);
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      box-shadow: inset 0 0 0 1px #f8fafc;
+    }
+
+    .subcard h3 {
+      margin-top: 0;
+      margin-bottom: 0.75rem;
+      color: var(--gf2-red-dark);
+      font-size: 1rem;
+    }
+
     .card-header-row {
       display: flex;
       align-items: center;
@@ -858,10 +880,18 @@
       box-shadow: 0 15px 32px rgba(17, 24, 39, 0.08);
     }
 
+    .table-wrapper.mini {
+      box-shadow: 0 8px 20px rgba(17, 24, 39, 0.06);
+    }
+
     table {
       width: 100%;
       border-collapse: collapse;
       min-width: 960px;
+    }
+
+    .table-wrapper.mini table {
+      min-width: 0;
     }
 
     thead {
@@ -1313,6 +1343,118 @@
           </tr>
         </tbody>
       </table>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-header-row">
+      <h2>Quebras por CNAE, Setor, Segmento, Porte e Situação Cadastral</h2>
+    </div>
+
+    <p class="helper-text">
+      Consolidado apenas sobre a amostra atual da Lista CNPJ (após filtros aplicados).
+    </p>
+
+    <div class="grid-2">
+      <div class="subcard">
+        <h3>CNAE Fiscal Principal (Top)</h3>
+        <div class="table-wrapper mini">
+          <table>
+            <thead>
+              <tr>
+                <th>CNAE</th>
+                <th>Qtd. empresas</th>
+                <th>% da amostra</th>
+              </tr>
+            </thead>
+            <tbody id="estat-cnae-corpo">
+              <tr class="empty-state">
+                <td colspan="3">Sem dados para exibir.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="subcard">
+        <h3>Grande Setor</h3>
+        <div class="table-wrapper mini">
+          <table>
+            <thead>
+              <tr>
+                <th>Setor</th>
+                <th>Qtd. empresas</th>
+                <th>% da amostra</th>
+              </tr>
+            </thead>
+            <tbody id="estat-setor-corpo">
+              <tr class="empty-state">
+                <td colspan="3">Sem dados para exibir.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="subcard">
+        <h3>Segmento de Mercado</h3>
+        <div class="table-wrapper mini">
+          <table>
+            <thead>
+              <tr>
+                <th>Segmento</th>
+                <th>Qtd. empresas</th>
+                <th>% da amostra</th>
+              </tr>
+            </thead>
+            <tbody id="estat-segmento-corpo">
+              <tr class="empty-state">
+                <td colspan="3">Sem dados para exibir.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="subcard">
+        <h3>Porte da Empresa</h3>
+        <div class="table-wrapper mini">
+          <table>
+            <thead>
+              <tr>
+                <th>Porte</th>
+                <th>Qtd. empresas</th>
+                <th>% da amostra</th>
+              </tr>
+            </thead>
+            <tbody id="estat-porte-corpo">
+              <tr class="empty-state">
+                <td colspan="3">Sem dados para exibir.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="subcard">
+        <h3>Situação Cadastral</h3>
+        <div class="table-wrapper mini">
+          <table>
+            <thead>
+              <tr>
+                <th>Situação</th>
+                <th>Qtd. empresas</th>
+                <th>% da amostra</th>
+              </tr>
+            </thead>
+            <tbody id="estat-situacao-corpo">
+              <tr class="empty-state">
+                <td colspan="3">Sem dados para exibir.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   </section>
 </section>
@@ -9048,6 +9190,125 @@ function calcularDistanciaSimples(lat1, lon1, lat2, lon2) {
   // [FRONTEND-GF2] MÓDULO ESTATÍSTICA (IBGE + SEGMENTOS)
   // ===========================================================
 
+  // Quebras de negócio para Estatística – baseado em ultimoResultado.
+  function gerarQuebrasNegocioEstatistica() {
+    if (!Array.isArray(ultimoResultado) || !ultimoResultado.length) {
+      return {
+        total: 0,
+        porCnae: [],
+        porSetor: [],
+        porSegmento: [],
+        porPorte: [],
+        porSituacao: []
+      };
+    }
+
+    const total = ultimoResultado.length;
+
+    const mapaCnae = new Map();
+    const mapaSetor = new Map();
+    const mapaSegmento = new Map();
+    const mapaPorte = new Map();
+    const mapaSituacao = new Map();
+
+    ultimoResultado.forEach(item => {
+      const cnae = (item.cnae_fiscal_principal || 'Sem CNAE').trim();
+      const setor = (item.ind_grande_setor || 'Sem classificação').trim();
+      const segmento = (item.nom_segmento_mercado || 'Sem segmento').trim();
+      const porte = (item.porte_empresa || 'Sem porte').trim();
+      const situacao =
+        (item.situacao_cadastral_descricao ||
+          item.situacao_cadastral ||
+          'Sem situação').trim();
+
+      function acumular(mapa, chave) {
+        if (!chave) chave = 'Não informado';
+        const atual = mapa.get(chave) || { chave, qtd: 0 };
+        atual.qtd += 1;
+        mapa.set(chave, atual);
+      }
+
+      acumular(mapaCnae, cnae);
+      acumular(mapaSetor, setor);
+      acumular(mapaSegmento, segmento);
+      acumular(mapaPorte, porte);
+      acumular(mapaSituacao, situacao);
+    });
+
+    function ordenarEConverter(mapa) {
+      const lista = Array.from(mapa.values());
+      lista.sort((a, b) => b.qtd - a.qtd || a.chave.localeCompare(b.chave));
+      return lista.map(obj => ({
+        chave: obj.chave,
+        qtd: obj.qtd,
+        perc: (obj.qtd / total) * 100
+      }));
+    }
+
+    return {
+      total,
+      porCnae: ordenarEConverter(mapaCnae),
+      porSetor: ordenarEConverter(mapaSetor),
+      porSegmento: ordenarEConverter(mapaSegmento),
+      porPorte: ordenarEConverter(mapaPorte),
+      porSituacao: ordenarEConverter(mapaSituacao)
+    };
+  }
+
+  function preencherTabelaResumoEstatistica(tbody, lista, maxLinhas) {
+    if (!tbody) return;
+
+    tbody.innerHTML = '';
+
+    if (!lista || !lista.length) {
+      tbody.innerHTML = `
+        <tr class="empty-state">
+          <td colspan="3">Nenhuma empresa na amostra atual.</td>
+        </tr>
+      `;
+      return;
+    }
+
+    const limite = typeof maxLinhas === 'number' ? maxLinhas : 20;
+    const top = lista.slice(0, limite);
+
+    const fragment = document.createDocumentFragment();
+
+    top.forEach(item => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${item.chave}</td>
+        <td>${item.qtd.toLocaleString('pt-BR')}</td>
+        <td>${item.perc.toFixed(1).replace('.', ',')}%</td>
+      `;
+      fragment.appendChild(tr);
+    });
+
+    tbody.appendChild(fragment);
+  }
+
+  function renderizarQuebrasNegocioEstatistica(quebras) {
+    const {
+      porCnae,
+      porSetor,
+      porSegmento,
+      porPorte,
+      porSituacao
+    } = quebras || {};
+
+    const corpoCnae = document.getElementById('estat-cnae-corpo');
+    const corpoSetor = document.getElementById('estat-setor-corpo');
+    const corpoSegmento = document.getElementById('estat-segmento-corpo');
+    const corpoPorte = document.getElementById('estat-porte-corpo');
+    const corpoSituacao = document.getElementById('estat-situacao-corpo');
+
+    preencherTabelaResumoEstatistica(corpoCnae, porCnae, 20);
+    preencherTabelaResumoEstatistica(corpoSetor, porSetor, 20);
+    preencherTabelaResumoEstatistica(corpoSegmento, porSegmento, 20);
+    preencherTabelaResumoEstatistica(corpoPorte, porPorte, 10);
+    preencherTabelaResumoEstatistica(corpoSituacao, porSituacao, 10);
+  }
+
   function limparTabelaEstatistica(mensagem) {
     if (!estatisticaCorpo) return;
     estatisticaCorpo.innerHTML = `
@@ -9291,6 +9552,7 @@ function calcularDistanciaSimples(lat1, lon1, lat2, lon2) {
       }
       limparTabelaEstatistica('Aguardando pesquisa para calcular estatísticas.');
       if (estatisticaResumo) estatisticaResumo.textContent = '';
+      renderizarQuebrasNegocioEstatistica(gerarQuebrasNegocioEstatistica());
       return;
     }
 
@@ -9303,6 +9565,10 @@ function calcularDistanciaSimples(lat1, lon1, lat2, lon2) {
     if (estatisticaContexto) {
       estatisticaContexto.textContent = montarContextoEstatistica();
     }
+
+    // Gera quebras por CNAE / Setor / Segmento / Porte / Situação
+    const quebras = gerarQuebrasNegocioEstatistica();
+    renderizarQuebrasNegocioEstatistica(quebras);
 
     const empresasPorMunicipio = consolidarEmpresasPorMunicipio();
     if (!empresasPorMunicipio.length) {
