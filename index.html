@@ -894,6 +894,28 @@
       min-width: 0;
     }
 
+    .estatistica-card .table-wrapper {
+      overflow-x: visible;
+    }
+
+    .estatistica-card table {
+      table-layout: auto;
+      width: 100%;
+      min-width: auto;
+      font-size: 0.85rem;
+      word-break: break-word;
+      white-space: normal;
+    }
+
+    .estatistica-card th,
+    .estatistica-card td {
+      padding: 4px 6px;
+    }
+
+    .estatistica-card .grid-2 {
+      align-items: flex-start;
+    }
+
     thead {
       background: var(--gf2-red-soft);
       color: var(--gf2-red-dark);
@@ -1142,8 +1164,6 @@
       aria-controls="tab-estatistica"
       data-tab="estatistica"
       id="tab-btn-estatistica"
-      aria-disabled="true"
-      disabled
     >
       Estatística
     </button>
@@ -1297,7 +1317,176 @@
   role="tabpanel"
   aria-labelledby="tab-btn-estatistica"
 >
-  <section class="card">
+  <section class="card estatistica-card">
+    <div class="card-header-row">
+      <h2>Filtros da Estatística</h2>
+      <button type="button" class="btn-outline" id="estat-filtros-limpar-btn">
+        Limpar filtros da Estatística
+      </button>
+    </div>
+
+    <div class="grid-2">
+      <div class="subcard">
+        <h3>Filtros por Região</h3>
+        <div class="multiselect" id="estat-filtro-regiao-wrapper">
+          <label for="estat-filtro-regiao-input">Região</label>
+          <input
+            id="estat-filtro-regiao-input"
+            type="text"
+            class="multiselect-input"
+            placeholder="Selecione uma ou mais regiões"
+            autocomplete="off"
+          />
+          <div
+            id="estat-filtro-regiao-suggestions"
+            class="suggestions"
+            role="listbox"
+            aria-multiselectable="true"
+            hidden
+          ></div>
+        </div>
+        <div class="tag-list" id="estat-filtro-regiao-tags"></div>
+
+        <div class="multiselect" id="estat-filtro-uf-wrapper">
+          <label for="estat-filtro-uf-input">UF</label>
+          <input
+            id="estat-filtro-uf-input"
+            type="text"
+            class="multiselect-input"
+            placeholder="Selecione uma ou mais UFs"
+            autocomplete="off"
+          />
+          <div
+            id="estat-filtro-uf-suggestions"
+            class="suggestions"
+            role="listbox"
+            aria-multiselectable="true"
+            hidden
+          ></div>
+        </div>
+        <div class="tag-list" id="estat-filtro-uf-tags"></div>
+
+        <div class="multiselect" id="estat-filtro-meso-wrapper">
+          <label for="estat-filtro-meso-input">Mesorregião</label>
+          <input
+            id="estat-filtro-meso-input"
+            type="text"
+            class="multiselect-input"
+            placeholder="Selecione mesorregiões"
+            autocomplete="off"
+          />
+          <div
+            id="estat-filtro-meso-suggestions"
+            class="suggestions"
+            role="listbox"
+            aria-multiselectable="true"
+            hidden
+          ></div>
+        </div>
+        <div class="tag-list" id="estat-filtro-meso-tags"></div>
+
+        <div class="multiselect" id="estat-filtro-micro-wrapper">
+          <label for="estat-filtro-micro-input">Microrregião</label>
+          <input
+            id="estat-filtro-micro-input"
+            type="text"
+            class="multiselect-input"
+            placeholder="Selecione microrregiões"
+            autocomplete="off"
+          />
+          <div
+            id="estat-filtro-micro-suggestions"
+            class="suggestions"
+            role="listbox"
+            aria-multiselectable="true"
+            hidden
+          ></div>
+        </div>
+        <div class="tag-list" id="estat-filtro-micro-tags"></div>
+
+        <div class="multiselect" id="estat-filtro-cidade-wrapper">
+          <label for="estat-filtro-cidade-input">Cidade (Município)</label>
+          <input
+            id="estat-filtro-cidade-input"
+            type="text"
+            class="multiselect-input"
+            placeholder="Selecione municípios"
+            autocomplete="off"
+          />
+          <div
+            id="estat-filtro-cidade-suggestions"
+            class="suggestions"
+            role="listbox"
+            aria-multiselectable="true"
+            hidden
+          ></div>
+        </div>
+        <div class="tag-list" id="estat-filtro-cidade-tags"></div>
+      </div>
+
+      <div class="subcard">
+        <h3>Filtros por Segmento</h3>
+        <div class="multiselect" id="estat-filtro-cnae-wrapper">
+          <label for="estat-filtro-cnae-input">CNAE Fiscal Principal</label>
+          <input
+            id="estat-filtro-cnae-input"
+            type="text"
+            class="multiselect-input"
+            placeholder="Selecione códigos CNAE"
+            autocomplete="off"
+          />
+          <div
+            id="estat-filtro-cnae-suggestions"
+            class="suggestions"
+            role="listbox"
+            aria-multiselectable="true"
+            hidden
+          ></div>
+        </div>
+        <div class="tag-list" id="estat-filtro-cnae-tags"></div>
+
+        <div class="multiselect" id="estat-filtro-setor-wrapper">
+          <label for="estat-filtro-setor-input">Grande Setor</label>
+          <input
+            id="estat-filtro-setor-input"
+            type="text"
+            class="multiselect-input"
+            placeholder="Selecione grandes setores"
+            autocomplete="off"
+          />
+          <div
+            id="estat-filtro-setor-suggestions"
+            class="suggestions"
+            role="listbox"
+            aria-multiselectable="true"
+            hidden
+          ></div>
+        </div>
+        <div class="tag-list" id="estat-filtro-setor-tags"></div>
+
+        <div class="multiselect" id="estat-filtro-segmento-wrapper">
+          <label for="estat-filtro-segmento-input">Segmento de Mercado</label>
+          <input
+            id="estat-filtro-segmento-input"
+            type="text"
+            class="multiselect-input"
+            placeholder="Selecione segmentos de mercado"
+            autocomplete="off"
+          />
+          <div
+            id="estat-filtro-segmento-suggestions"
+            class="suggestions"
+            role="listbox"
+            aria-multiselectable="true"
+            hidden
+          ></div>
+        </div>
+        <div class="tag-list" id="estat-filtro-segmento-tags"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card estatistica-card">
     <div class="card-header-row">
       <h2>Estatísticas por Município (IBGE + Base CNPJ)</h2>
     </div>
@@ -1346,7 +1535,7 @@
     </div>
   </section>
 
-  <section class="card">
+  <section class="card estatistica-card">
     <div class="card-header-row">
       <h2>Quebras por CNAE, Setor, Segmento, Porte e Situação Cadastral</h2>
     </div>
@@ -1455,6 +1644,82 @@
           </table>
         </div>
       </div>
+    </div>
+  </section>
+
+  <section class="card estatistica-card">
+    <div class="card-header-row">
+      <h2>Mortalidade de Empresas (Situação Cadastral)</h2>
+    </div>
+    <p class="helper-text" id="estat-mortalidade-resumo">Sem dados para exibir.</p>
+    <div class="table-wrapper mini">
+      <table>
+        <thead>
+          <tr>
+            <th>Situação</th>
+            <th>Qtd. empresas</th>
+            <th>% da amostra</th>
+          </tr>
+        </thead>
+        <tbody id="estat-mortalidade-corpo">
+          <tr class="empty-state">
+            <td colspan="3">Sem dados para exibir.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card estatistica-card">
+    <div class="card-header-row">
+      <h2>Dívida Ativa das Empresas</h2>
+    </div>
+    <div class="grid-2">
+      <div>
+        <p class="status-count" id="estat-divida-resumo">Sem dados para exibir.</p>
+      </div>
+      <div>
+        <ul class="helper-text" id="estat-divida-indicadores"></ul>
+      </div>
+    </div>
+    <div class="table-wrapper mini">
+      <table>
+        <thead>
+          <tr>
+            <th>Situação</th>
+            <th>Qtd. empresas</th>
+            <th>Valor total da dívida</th>
+          </tr>
+        </thead>
+        <tbody id="estat-divida-corpo">
+          <tr class="empty-state">
+            <td colspan="3">Sem dados para exibir.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card estatistica-card">
+    <div class="card-header-row">
+      <h2>Capital Social das Empresas</h2>
+    </div>
+    <p class="helper-text" id="estat-capital-resumo">Sem dados para exibir.</p>
+    <div class="table-wrapper mini">
+      <table>
+        <thead>
+          <tr>
+            <th>Faixa de Capital</th>
+            <th>Qtd. empresas</th>
+            <th>% da amostra</th>
+          </tr>
+        </thead>
+        <tbody id="estat-capital-corpo">
+          <tr class="empty-state">
+            <td colspan="3">Sem dados para exibir.</td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   </section>
 </section>
@@ -3270,6 +3535,7 @@ function normalizarUf(valor) {
 
     function limparResultados(mensagem = 'Utilize os filtros acima para iniciar uma pesquisa.') {
       ultimoResultado = [];
+      inicializarFiltrosEstatistica();
       exportarBtn.disabled = true;
       atualizarStatusCount(0);
       resultadosCorpo.innerHTML = `<tr class="empty-state"><td colspan="10">${mensagem}</td></tr>`;
@@ -3305,6 +3571,7 @@ function atualizarResultados(dados) {
       }
 
       ultimoResultado = dados;
+      inicializarFiltrosEstatistica();
       exportarBtn.disabled = false;
       atualizarStatusCount(dados.length);
       statusMessage.textContent = 'Resultados atualizados com sucesso.';
@@ -9186,13 +9453,321 @@ function calcularDistanciaSimples(lat1, lon1, lat2, lon2) {
 }
 
 
-  // ===========================================================
-  // [FRONTEND-GF2] MÓDULO ESTATÍSTICA (IBGE + SEGMENTOS)
-  // ===========================================================
+  // ======================================
+  // MÓDULO ESTATÍSTICA – FILTROS E ANÁLISES
+  // ======================================
 
-  // Quebras de negócio para Estatística – baseado em ultimoResultado.
-  function gerarQuebrasNegocioEstatistica() {
-    if (!Array.isArray(ultimoResultado) || !ultimoResultado.length) {
+  const filtrosEstatistica = {
+    regioes: [],
+    ufs: [],
+    mesorregioes: [],
+    microrregioes: [],
+    cidades: [],
+    cnaes: [],
+    grandesSetores: [],
+    segmentos: []
+  };
+
+  const multiselectsEstatistica = {};
+
+  function criarMultiselectEstatistica({
+    inputId,
+    suggestionsId,
+    tagsId,
+    chaveFiltro
+  }) {
+    const input = document.getElementById(inputId);
+    const suggestions = document.getElementById(suggestionsId);
+    const tags = document.getElementById(tagsId);
+    if (!input || !suggestions || !tags) return null;
+
+    let opcoes = [];
+    const selecionados = new Set();
+
+    function atualizarFiltrosGlobais() {
+      filtrosEstatistica[chaveFiltro] = Array.from(selecionados);
+      atualizarAbaEstatistica();
+    }
+
+    function renderTags() {
+      tags.innerHTML = '';
+      if (!selecionados.size) return;
+
+      const fragment = document.createDocumentFragment();
+      selecionados.forEach(valor => {
+        const opcao = opcoes.find(op => op.valor === valor);
+        const label = opcao ? opcao.rotulo : valor;
+        const chip = document.createElement('span');
+        chip.className = 'tag';
+        chip.textContent = label;
+        const remover = document.createElement('button');
+        remover.type = 'button';
+        remover.textContent = '×';
+        remover.setAttribute('aria-label', `Remover ${label}`);
+        remover.addEventListener('click', () => {
+          selecionados.delete(valor);
+          renderTags();
+          renderSugestoes(false);
+          atualizarFiltrosGlobais();
+        });
+        chip.append(remover);
+        fragment.append(chip);
+      });
+      tags.append(fragment);
+    }
+
+    function toggleValor(valor) {
+      if (!valor) return;
+      if (selecionados.has(valor)) {
+        selecionados.delete(valor);
+      } else {
+        selecionados.add(valor);
+      }
+      renderTags();
+      renderSugestoes(true);
+      atualizarFiltrosGlobais();
+    }
+
+    function renderSugestoes(aberto) {
+      const termo = (input.value || '').trim().toLowerCase();
+      suggestions.innerHTML = '';
+      let filtradas = opcoes;
+      if (termo) {
+        filtradas = opcoes.filter(op =>
+          op.rotulo.toLowerCase().includes(termo)
+        );
+      }
+
+      if (!filtradas.length) {
+        suggestions.innerHTML = '<div class="suggestion-empty">Nenhuma opção encontrada.</div>';
+        suggestions.hidden = !aberto;
+        return;
+      }
+
+      const fragment = document.createDocumentFragment();
+      filtradas.forEach(opcao => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'suggestion-item';
+        if (selecionados.has(opcao.valor)) {
+          btn.classList.add('selected');
+        }
+        btn.innerHTML = `<span>${opcao.rotulo}</span>`;
+        btn.addEventListener('click', () => toggleValor(opcao.valor));
+        fragment.append(btn);
+      });
+      suggestions.append(fragment);
+      suggestions.hidden = !aberto;
+    }
+
+    input.addEventListener('input', () => renderSugestoes(true));
+    input.addEventListener('focus', () => renderSugestoes(true));
+    input.addEventListener('click', () => renderSugestoes(true));
+    input.addEventListener('blur', () => {
+      setTimeout(() => {
+        suggestions.hidden = true;
+      }, 120);
+    });
+
+    function atualizarOpcoes(lista) {
+      const mapa = new Map();
+      (Array.isArray(lista) ? lista : []).forEach(op => {
+        if (!op || !op.valor) return;
+        mapa.set(op.valor, { valor: op.valor, rotulo: op.rotulo || op.valor });
+      });
+      opcoes = Array.from(mapa.values()).sort((a, b) => a.rotulo.localeCompare(b.rotulo, 'pt-BR'));
+      const valoresDisponiveis = new Set(opcoes.map(o => o.valor));
+      Array.from(selecionados).forEach(valor => {
+        if (!valoresDisponiveis.has(valor)) {
+          selecionados.delete(valor);
+        }
+      });
+      renderTags();
+      renderSugestoes(false);
+    }
+
+    function limparSelecao() {
+      selecionados.clear();
+      renderTags();
+      renderSugestoes(false);
+      atualizarFiltrosGlobais();
+    }
+
+    return { atualizarOpcoes, limparSelecao };
+  }
+
+  function inicializarEstruturasFiltrosEstatistica() {
+    multiselectsEstatistica.regioes =
+      multiselectsEstatistica.regioes ||
+      criarMultiselectEstatistica({
+        inputId: 'estat-filtro-regiao-input',
+        suggestionsId: 'estat-filtro-regiao-suggestions',
+        tagsId: 'estat-filtro-regiao-tags',
+        chaveFiltro: 'regioes'
+      });
+    multiselectsEstatistica.ufs =
+      multiselectsEstatistica.ufs ||
+      criarMultiselectEstatistica({
+        inputId: 'estat-filtro-uf-input',
+        suggestionsId: 'estat-filtro-uf-suggestions',
+        tagsId: 'estat-filtro-uf-tags',
+        chaveFiltro: 'ufs'
+      });
+    multiselectsEstatistica.mesorregioes =
+      multiselectsEstatistica.mesorregioes ||
+      criarMultiselectEstatistica({
+        inputId: 'estat-filtro-meso-input',
+        suggestionsId: 'estat-filtro-meso-suggestions',
+        tagsId: 'estat-filtro-meso-tags',
+        chaveFiltro: 'mesorregioes'
+      });
+    multiselectsEstatistica.microrregioes =
+      multiselectsEstatistica.microrregioes ||
+      criarMultiselectEstatistica({
+        inputId: 'estat-filtro-micro-input',
+        suggestionsId: 'estat-filtro-micro-suggestions',
+        tagsId: 'estat-filtro-micro-tags',
+        chaveFiltro: 'microrregioes'
+      });
+    multiselectsEstatistica.cidades =
+      multiselectsEstatistica.cidades ||
+      criarMultiselectEstatistica({
+        inputId: 'estat-filtro-cidade-input',
+        suggestionsId: 'estat-filtro-cidade-suggestions',
+        tagsId: 'estat-filtro-cidade-tags',
+        chaveFiltro: 'cidades'
+      });
+    multiselectsEstatistica.cnaes =
+      multiselectsEstatistica.cnaes ||
+      criarMultiselectEstatistica({
+        inputId: 'estat-filtro-cnae-input',
+        suggestionsId: 'estat-filtro-cnae-suggestions',
+        tagsId: 'estat-filtro-cnae-tags',
+        chaveFiltro: 'cnaes'
+      });
+    multiselectsEstatistica.grandesSetores =
+      multiselectsEstatistica.grandesSetores ||
+      criarMultiselectEstatistica({
+        inputId: 'estat-filtro-setor-input',
+        suggestionsId: 'estat-filtro-setor-suggestions',
+        tagsId: 'estat-filtro-setor-tags',
+        chaveFiltro: 'grandesSetores'
+      });
+    multiselectsEstatistica.segmentos =
+      multiselectsEstatistica.segmentos ||
+      criarMultiselectEstatistica({
+        inputId: 'estat-filtro-segmento-input',
+        suggestionsId: 'estat-filtro-segmento-suggestions',
+        tagsId: 'estat-filtro-segmento-tags',
+        chaveFiltro: 'segmentos'
+      });
+  }
+
+  function inicializarFiltrosEstatistica() {
+    inicializarEstruturasFiltrosEstatistica();
+    const base = Array.isArray(ultimoResultado) ? ultimoResultado : [];
+
+    const mapear = (lista, rotuloFn) =>
+      Array.from(new Set(lista.filter(Boolean))).map(valor => ({
+        valor,
+        rotulo: rotuloFn ? rotuloFn(valor) : valor
+      }));
+
+    const opcoesRegioes = mapear(
+      base.map(emp => emp.regiao_nome || emp.regiao_sigla || ''),
+      valor => valor
+    );
+    const opcoesUfs = mapear(base.map(emp => emp.uf || ''));
+    const opcoesMeso = mapear(
+      base.map(emp => emp.mesorregiao_nome || emp.mesorregiao_id || ''),
+      valor => valor
+    );
+    const opcoesMicro = mapear(
+      base.map(emp => emp.microrregiao_nome || emp.microrregiao_id || ''),
+      valor => valor
+    );
+    const opcoesCidade = mapear(
+      base.map(emp => emp.municipio_nome || ''),
+      valor => {
+        const item = base.find(emp => (emp.municipio_nome || '') === valor);
+        const codigo = item ? item.municipio_codigo : '';
+        return codigo ? `${valor} (${codigo})` : valor;
+      }
+    );
+    const opcoesCnae = mapear(
+      base.map(emp => emp.cnae_fiscal_principal || ''),
+      valor => valor
+    );
+    const opcoesSetor = mapear(base.map(emp => emp.ind_grande_setor || ''));
+    const opcoesSegmento = mapear(base.map(emp => emp.nom_segmento_mercado || ''));
+
+    if (multiselectsEstatistica.regioes)
+      multiselectsEstatistica.regioes.atualizarOpcoes(opcoesRegioes);
+    if (multiselectsEstatistica.ufs)
+      multiselectsEstatistica.ufs.atualizarOpcoes(opcoesUfs);
+    if (multiselectsEstatistica.mesorregioes)
+      multiselectsEstatistica.mesorregioes.atualizarOpcoes(opcoesMeso);
+    if (multiselectsEstatistica.microrregioes)
+      multiselectsEstatistica.microrregioes.atualizarOpcoes(opcoesMicro);
+    if (multiselectsEstatistica.cidades)
+      multiselectsEstatistica.cidades.atualizarOpcoes(opcoesCidade);
+    if (multiselectsEstatistica.cnaes)
+      multiselectsEstatistica.cnaes.atualizarOpcoes(opcoesCnae);
+    if (multiselectsEstatistica.grandesSetores)
+      multiselectsEstatistica.grandesSetores.atualizarOpcoes(opcoesSetor);
+    if (multiselectsEstatistica.segmentos)
+      multiselectsEstatistica.segmentos.atualizarOpcoes(opcoesSegmento);
+  }
+
+  function limparFiltrosEstatistica() {
+    Object.keys(filtrosEstatistica).forEach(chave => {
+      filtrosEstatistica[chave] = [];
+      const instancia = multiselectsEstatistica[chave];
+      if (instancia && typeof instancia.limparSelecao === 'function') {
+        instancia.limparSelecao();
+      }
+    });
+  }
+
+  function filtrarEmpresasParaEstatistica() {
+    if (!Array.isArray(ultimoResultado)) return [];
+
+    const f = filtrosEstatistica;
+    return ultimoResultado.filter(emp => {
+      const regiaoValor = emp.regiao_nome || emp.regiao_sigla;
+      const mesoValor = emp.mesorregiao_nome || emp.mesorregiao_id;
+      const microValor = emp.microrregiao_nome || emp.microrregiao_id;
+
+      if (f.regioes.length && !f.regioes.includes(regiaoValor)) return false;
+      if (f.ufs.length && !f.ufs.includes(emp.uf)) return false;
+      if (f.mesorregioes.length && !f.mesorregioes.includes(mesoValor)) return false;
+      if (f.microrregioes.length && !f.microrregioes.includes(microValor)) return false;
+      if (f.cidades.length && !f.cidades.includes(emp.municipio_nome)) return false;
+
+      if (f.cnaes.length && !f.cnaes.includes(emp.cnae_fiscal_principal)) return false;
+      if (f.grandesSetores.length && !f.grandesSetores.includes(emp.ind_grande_setor))
+        return false;
+      if (f.segmentos.length && !f.segmentos.includes(emp.nom_segmento_mercado))
+        return false;
+
+      return true;
+    });
+  }
+
+  function registrarListenersFiltrosEstatistica() {
+    const limparBtn = document.getElementById('estat-filtros-limpar-btn');
+    if (limparBtn) {
+      limparBtn.addEventListener('click', () => {
+        limparFiltrosEstatistica();
+        atualizarAbaEstatistica();
+      });
+    }
+  }
+
+  // Quebras de negócio para Estatística – baseado em amostra filtrada.
+  function gerarQuebrasNegocioEstatistica(empresasBase) {
+    const empresas = Array.isArray(empresasBase) ? empresasBase : [];
+    if (!empresas.length) {
       return {
         total: 0,
         porCnae: [],
@@ -9203,7 +9778,7 @@ function calcularDistanciaSimples(lat1, lon1, lat2, lon2) {
       };
     }
 
-    const total = ultimoResultado.length;
+    const total = empresas.length;
 
     const mapaCnae = new Map();
     const mapaSetor = new Map();
@@ -9211,7 +9786,7 @@ function calcularDistanciaSimples(lat1, lon1, lat2, lon2) {
     const mapaPorte = new Map();
     const mapaSituacao = new Map();
 
-    ultimoResultado.forEach(item => {
+    empresas.forEach(item => {
       const cnae = (item.cnae_fiscal_principal || 'Sem CNAE').trim();
       const setor = (item.ind_grande_setor || 'Sem classificação').trim();
       const segmento = (item.nom_segmento_mercado || 'Sem segmento').trim();
@@ -9405,14 +9980,15 @@ function calcularDistanciaSimples(lat1, lon1, lat2, lon2) {
     estatisticaAnoSelect.disabled = anos_disponiveis.length <= 1;
   }
 
-  function consolidarEmpresasPorMunicipio() {
-    if (!Array.isArray(ultimoResultado) || !ultimoResultado.length) {
+  function consolidarEmpresasPorMunicipio(empresasBase) {
+    const empresas = Array.isArray(empresasBase) ? empresasBase : [];
+    if (!empresas.length) {
       return [];
     }
 
     const mapa = new Map();
 
-    ultimoResultado.forEach(item => {
+    empresas.forEach(item => {
       const uf = String(item.uf || '').trim().toUpperCase();
       const cod = String(item.municipio_codigo || '').trim();
       const nome =
@@ -9536,14 +10112,273 @@ function calcularDistanciaSimples(lat1, lon1, lat2, lon2) {
     estatisticaCorpo.append(fragment);
   }
 
+  function gerarResumoMortalidade(empresasBase) {
+    const empresas = Array.isArray(empresasBase) ? empresasBase : [];
+    const mapa = new Map();
+    const total = empresas.length;
+
+    const adicionar = rotulo => {
+      const atual = mapa.get(rotulo) || { rotulo, qtd: 0 };
+      atual.qtd += 1;
+      mapa.set(rotulo, atual);
+    };
+
+    empresas.forEach(emp => {
+      const codigo = String(emp.situacao_cadastral || '').padStart(2, '0');
+      const desc = String(emp.situacao_cadastral_descricao || '').toUpperCase();
+      if (codigo === '02' || desc.includes('ATIVA')) {
+        adicionar('Ativas');
+      } else if (
+        codigo === '08' ||
+        desc.includes('BAIXADA') ||
+        desc.includes('INAPTA') ||
+        desc.includes('SUSPENSA')
+      ) {
+        adicionar('Baixadas / Inaptas / Suspensas');
+      } else {
+        adicionar('Outras');
+      }
+    });
+
+    const linhas = Array.from(mapa.values()).map(item => ({
+      ...item,
+      perc: total ? (item.qtd / total) * 100 : 0
+    }));
+
+    return { total, linhas };
+  }
+
+  function renderizarMortalidadeEstatistica(resumo) {
+    const corpo = document.getElementById('estat-mortalidade-corpo');
+    const texto = document.getElementById('estat-mortalidade-resumo');
+    if (!corpo || !texto) return;
+
+    corpo.innerHTML = '';
+    const linhas = resumo && Array.isArray(resumo.linhas) ? resumo.linhas : [];
+    const total = resumo && typeof resumo.total === 'number' ? resumo.total : 0;
+
+    if (!total) {
+      texto.textContent =
+        'Nenhuma empresa encontrada com os filtros atuais da Estatística.';
+      corpo.innerHTML = '<tr class="empty-state"><td colspan="3">Sem dados para exibir.</td></tr>';
+      return;
+    }
+
+    const ativas = linhas.find(l => l.rotulo === 'Ativas');
+    const baixadas = linhas.find(l => l.rotulo === 'Baixadas / Inaptas / Suspensas');
+    const ativasQtd = ativas ? ativas.qtd : 0;
+    const baixadasQtd = baixadas ? baixadas.qtd : 0;
+    const percBaixadas = total ? (baixadasQtd / total) * 100 : 0;
+    texto.textContent = `${formatadorNumero.format(total)} empresas no total. ${
+      formatadorNumero.format(ativasQtd)
+    } ativas, ${formatadorNumero.format(baixadasQtd)} baixadas/inaptas/suspensas (${percBaixadas.toFixed(1).replace('.', ',')}% da amostra).`;
+
+    const fragment = document.createDocumentFragment();
+    linhas
+      .sort((a, b) => b.qtd - a.qtd)
+      .forEach(item => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${item.rotulo}</td>
+          <td>${formatadorNumero.format(item.qtd)}</td>
+          <td>${item.perc.toFixed(1).replace('.', ',')}%</td>
+        `;
+        fragment.append(tr);
+      });
+    corpo.append(fragment);
+  }
+
+  function gerarResumoDividaAtiva(empresasBase) {
+    const empresas = Array.isArray(empresasBase) ? empresasBase : [];
+    const ativas = empresas.filter(emp => {
+      const codigo = String(emp.situacao_cadastral || '').padStart(2, '0');
+      const desc = String(emp.situacao_cadastral_descricao || '').toUpperCase();
+      return codigo === '02' || desc.includes('ATIVA');
+    });
+
+    const totalAtivas = ativas.length;
+    const comDivida = ativas.filter(emp => Number(emp.valor_divida_ativa_total || 0) > 0);
+    const valorTotal = comDivida.reduce(
+      (acc, emp) => acc + Number(emp.valor_divida_ativa_total || 0),
+      0
+    );
+    const semDivida = totalAtivas - comDivida.length;
+    const percentual = totalAtivas ? (comDivida.length / totalAtivas) * 100 : 0;
+
+    return {
+      totalAtivas,
+      comDivida: comDivida.length,
+      semDivida,
+      valorTotal,
+      percentual,
+      linhas: [
+        {
+          rotulo: 'Ativas com dívida',
+          qtd: comDivida.length,
+          valor: valorTotal
+        },
+        {
+          rotulo: 'Ativas sem dívida',
+          qtd: semDivida,
+          valor: 0
+        }
+      ]
+    };
+  }
+
+  function renderizarDividaEstatistica(resumo) {
+    const corpo = document.getElementById('estat-divida-corpo');
+    const resumoTexto = document.getElementById('estat-divida-resumo');
+    const indicadoresLista = document.getElementById('estat-divida-indicadores');
+    if (!corpo || !resumoTexto || !indicadoresLista) return;
+
+    corpo.innerHTML = '';
+    indicadoresLista.innerHTML = '';
+    const linhas = resumo && Array.isArray(resumo.linhas) ? resumo.linhas : [];
+
+    if (!resumo || !resumo.totalAtivas) {
+      resumoTexto.textContent = 'Nenhuma empresa ativa encontrada na amostra filtrada.';
+      corpo.innerHTML = '<tr class="empty-state"><td colspan="3">Sem dados para exibir.</td></tr>';
+      return;
+    }
+
+    resumoTexto.textContent = `${formatadorNumero.format(
+      resumo.totalAtivas
+    )} empresas ativas. ${formatadorNumero.format(
+      resumo.comDivida
+    )} com dívida (${resumo.percentual.toFixed(1).replace('.', ',')}% da amostra ativa).`;
+
+    const indicadores = [
+      `Total de empresas ativas: ${formatadorNumero.format(resumo.totalAtivas)}`,
+      `Ativas com dívida: ${formatadorNumero.format(resumo.comDivida)}`,
+      `Percentual com dívida: ${resumo.percentual.toFixed(1).replace('.', ',')}%`,
+      `Valor total das dívidas: ${formatadorMoeda.format(resumo.valorTotal || 0)}`
+    ];
+    indicadores.forEach(texto => {
+      const li = document.createElement('li');
+      li.textContent = texto;
+      indicadoresLista.append(li);
+    });
+
+    const fragment = document.createDocumentFragment();
+    linhas.forEach(item => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${item.rotulo}</td>
+        <td>${formatadorNumero.format(item.qtd)}</td>
+        <td>${formatadorMoeda.format(item.valor || 0)}</td>
+      `;
+      fragment.append(tr);
+    });
+    corpo.append(fragment);
+  }
+
+  function gerarResumoCapitalSocial(empresasBase) {
+    const empresas = Array.isArray(empresasBase) ? empresasBase : [];
+    const valores = [];
+    let semInfo = 0;
+    empresas.forEach(emp => {
+      const valor = Number(emp.capital_social);
+      if (Number.isFinite(valor) && valor > 0) {
+        valores.push(valor);
+      } else {
+        semInfo += 1;
+      }
+    });
+
+    valores.sort((a, b) => a - b);
+    const soma = valores.reduce((acc, v) => acc + v, 0);
+    const media = valores.length ? soma / valores.length : 0;
+    const mediana = valores.length
+      ? valores.length % 2 === 0
+        ? (valores[valores.length / 2 - 1] + valores[valores.length / 2]) / 2
+        : valores[Math.floor(valores.length / 2)]
+      : 0;
+    const min = valores.length ? valores[0] : null;
+    const max = valores.length ? valores[valores.length - 1] : null;
+
+    const faixas = [
+      { rotulo: 'Até 50 mil', cond: v => v > 0 && v <= 50000 },
+      { rotulo: 'De 50 mil a 250 mil', cond: v => v > 50000 && v <= 250000 },
+      { rotulo: 'De 250 mil a 1 milhão', cond: v => v > 250000 && v <= 1000000 },
+      { rotulo: 'Acima de 1 milhão', cond: v => v > 1000000 }
+    ];
+
+    const total = empresas.length;
+    const linhas = faixas.map(faixa => {
+      const qtd = valores.filter(faixa.cond).length;
+      return {
+        rotulo: faixa.rotulo,
+        qtd,
+        perc: total ? (qtd / total) * 100 : 0
+      };
+    });
+
+    if (semInfo) {
+      linhas.push({
+        rotulo: 'Sem informação',
+        qtd: semInfo,
+        perc: total ? (semInfo / total) * 100 : 0
+      });
+    }
+
+    return {
+      total,
+      soma,
+      media,
+      mediana,
+      min,
+      max,
+      linhas,
+      comInfo: valores.length,
+      semInfo
+    };
+  }
+
+  function renderizarCapitalEstatistica(resumo) {
+    const corpo = document.getElementById('estat-capital-corpo');
+    const texto = document.getElementById('estat-capital-resumo');
+    if (!corpo || !texto) return;
+
+    corpo.innerHTML = '';
+    const linhas = resumo && Array.isArray(resumo.linhas) ? resumo.linhas : [];
+
+    if (!resumo || !resumo.total) {
+      texto.textContent = 'Nenhuma empresa encontrada para calcular capital social.';
+      corpo.innerHTML = '<tr class="empty-state"><td colspan="3">Sem dados para exibir.</td></tr>';
+      return;
+    }
+
+    texto.textContent = `${formatadorNumero.format(
+      resumo.comInfo
+    )} empresas com capital informado • Soma: ${formatadorMoeda.format(
+      resumo.soma || 0
+    )} • Média: ${formatadorMoeda.format(resumo.media || 0)} • Mediana: ${formatadorMoeda.format(
+      resumo.mediana || 0
+    )} • Mín/Máx: ${resumo.min != null ? formatadorMoeda.format(resumo.min) : '—'} / ${
+      resumo.max != null ? formatadorMoeda.format(resumo.max) : '—'
+    }`;
+
+    const fragment = document.createDocumentFragment();
+    linhas.forEach(item => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${item.rotulo}</td>
+        <td>${formatadorNumero.format(item.qtd)}</td>
+        <td>${item.perc.toFixed(1).replace('.', ',')}%</td>
+      `;
+      fragment.append(tr);
+    });
+    corpo.append(fragment);
+  }
+
+  registrarListenersFiltrosEstatistica();
+  inicializarEstruturasFiltrosEstatistica();
+
   async function atualizarAbaEstatistica() {
     if (!tabEstatisticaBtn) return;
 
     const temPesquisa = Array.isArray(ultimoResultado) && ultimoResultado.length > 0;
-
-    // Habilita/desabilita o botão da aba
-    tabEstatisticaBtn.disabled = !temPesquisa;
-    tabEstatisticaBtn.setAttribute('aria-disabled', temPesquisa ? 'false' : 'true');
 
     if (!temPesquisa) {
       if (estatisticaStatus) {
@@ -9553,6 +10388,29 @@ function calcularDistanciaSimples(lat1, lon1, lat2, lon2) {
       limparTabelaEstatistica('Aguardando pesquisa para calcular estatísticas.');
       if (estatisticaResumo) estatisticaResumo.textContent = '';
       renderizarQuebrasNegocioEstatistica(gerarQuebrasNegocioEstatistica());
+      renderizarMortalidadeEstatistica(gerarResumoMortalidade([]));
+      renderizarDividaEstatistica(gerarResumoDividaAtiva([]));
+      renderizarCapitalEstatistica(gerarResumoCapitalSocial([]));
+      estatisticaUfAtual = null;
+      return;
+    }
+
+    const empresasFiltradasEstatistica = filtrarEmpresasParaEstatistica();
+
+    if (!empresasFiltradasEstatistica.length) {
+      if (estatisticaStatus) {
+        estatisticaStatus.textContent =
+          'Nenhuma empresa encontrada com os filtros da Estatística. Ajuste os filtros ou amplie a seleção.';
+      }
+      limparTabelaEstatistica(
+        'Nenhuma empresa encontrada com os filtros da Estatística. Ajuste os filtros ou amplie a seleção.'
+      );
+      if (estatisticaResumo) estatisticaResumo.textContent = '';
+      renderizarQuebrasNegocioEstatistica(gerarQuebrasNegocioEstatistica([]));
+      renderizarMortalidadeEstatistica(gerarResumoMortalidade([]));
+      renderizarDividaEstatistica(gerarResumoDividaAtiva([]));
+      renderizarCapitalEstatistica(gerarResumoCapitalSocial([]));
+      estatisticaUfAtual = null;
       return;
     }
 
@@ -9567,10 +10425,21 @@ function calcularDistanciaSimples(lat1, lon1, lat2, lon2) {
     }
 
     // Gera quebras por CNAE / Setor / Segmento / Porte / Situação
-    const quebras = gerarQuebrasNegocioEstatistica();
+    const quebras = gerarQuebrasNegocioEstatistica(empresasFiltradasEstatistica);
     renderizarQuebrasNegocioEstatistica(quebras);
 
-    const empresasPorMunicipio = consolidarEmpresasPorMunicipio();
+    const resumoMortalidade = gerarResumoMortalidade(empresasFiltradasEstatistica);
+    renderizarMortalidadeEstatistica(resumoMortalidade);
+
+    const resumoDivida = gerarResumoDividaAtiva(empresasFiltradasEstatistica);
+    renderizarDividaEstatistica(resumoDivida);
+
+    const resumoCapital = gerarResumoCapitalSocial(empresasFiltradasEstatistica);
+    renderizarCapitalEstatistica(resumoCapital);
+
+    const empresasPorMunicipio = consolidarEmpresasPorMunicipio(
+      empresasFiltradasEstatistica
+    );
     if (!empresasPorMunicipio.length) {
       if (estatisticaStatus) {
         estatisticaStatus.textContent =
@@ -9610,12 +10479,6 @@ function calcularDistanciaSimples(lat1, lon1, lat2, lon2) {
   // Listener específico da aba Estatística
   if (tabEstatisticaBtn) {
     tabEstatisticaBtn.addEventListener('click', () => {
-      if (
-        tabEstatisticaBtn.disabled ||
-        tabEstatisticaBtn.getAttribute('aria-disabled') === 'true'
-      ) {
-        return;
-      }
       atualizarAbaEstatistica();
     });
   }
