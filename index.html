@@ -916,6 +916,54 @@
       align-items: flex-start;
     }
 
+    .subtab-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .subtab {
+      border: none;
+      padding: 0.4rem 0.8rem;
+      border-radius: 999px;
+      background: #f0f0f5;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+
+    .subtab.active {
+      background: #a30000;
+      color: #fff;
+    }
+
+    .estat-subtab-panel {
+      display: none;
+    }
+
+    .estat-subtab-panel.active {
+      display: block;
+    }
+
+    /* Layout dos cards dentro da aba Estatística */
+    #tab-estatistica .card {
+      margin-bottom: 1rem;
+    }
+
+    /* Evitar rolagem horizontal nas tabelas da Estatística */
+    #tab-estatistica .table-wrapper {
+      overflow-x: visible;
+    }
+
+    #tab-estatistica table {
+      table-layout: auto;
+      width: 100%;
+      font-size: 0.85rem;
+      white-space: normal;
+      word-break: break-word;
+      min-width: auto;
+    }
+
     thead {
       background: var(--gf2-red-soft);
       color: var(--gf2-red-dark);
@@ -1317,410 +1365,436 @@
   role="tabpanel"
   aria-labelledby="tab-btn-estatistica"
 >
-  <section class="card estatistica-card">
-    <div class="card-header-row">
-      <h2>Filtros da Estatística</h2>
-      <button type="button" class="btn-outline" id="estat-filtros-limpar-btn">
-        Limpar filtros da Estatística
-      </button>
-    </div>
+  <div class="subtab-bar" id="estat-subtabs">
+    <button class="subtab active" data-subtab="estat-sub-filtros">Filtros</button>
+    <button class="subtab" data-subtab="estat-sub-municipios">Estatísticas Municipais</button>
+    <button class="subtab" data-subtab="estat-sub-segmentos">Estatísticas por Segmentos</button>
+    <button class="subtab" data-subtab="estat-sub-mortalidade">Mortalidade de Empresas</button>
+    <button class="subtab" data-subtab="estat-sub-divida">Dívida Ativa das Empresas</button>
+    <button class="subtab" data-subtab="estat-sub-capital">Capital Social das Empresas</button>
+  </div>
 
-    <div class="grid-2">
-      <div class="subcard">
-        <h3>Filtros por Região</h3>
-        <div class="multiselect" id="estat-filtro-regiao-wrapper">
-          <label for="estat-filtro-regiao-input">Região</label>
-          <input
-            id="estat-filtro-regiao-input"
-            type="text"
-            class="multiselect-input"
-            placeholder="Selecione uma ou mais regiões"
-            autocomplete="off"
-          />
-          <div
-            id="estat-filtro-regiao-suggestions"
-            class="suggestions"
-            role="listbox"
-            aria-multiselectable="true"
-            hidden
-          ></div>
+  <section class="estat-subtab-panel active" id="estat-sub-filtros" aria-label="Filtros da Estatística">
+    <section class="card estatistica-card">
+      <div class="card-header-row">
+        <h2>Filtros da Estatística</h2>
+        <div class="actions" style="gap: 0.5rem; align-items: center;">
+          <button type="button" class="btn-outline" id="estat-filtros-limpar-btn">
+            Limpar filtros da Estatística
+          </button>
+          <button type="button" class="btn-primary" id="estat-aplicar-filtros-btn">
+            Aplicar filtros
+          </button>
         </div>
-        <div class="tag-list" id="estat-filtro-regiao-tags"></div>
-
-        <div class="multiselect" id="estat-filtro-uf-wrapper">
-          <label for="estat-filtro-uf-input">UF</label>
-          <input
-            id="estat-filtro-uf-input"
-            type="text"
-            class="multiselect-input"
-            placeholder="Selecione uma ou mais UFs"
-            autocomplete="off"
-          />
-          <div
-            id="estat-filtro-uf-suggestions"
-            class="suggestions"
-            role="listbox"
-            aria-multiselectable="true"
-            hidden
-          ></div>
-        </div>
-        <div class="tag-list" id="estat-filtro-uf-tags"></div>
-
-        <div class="multiselect" id="estat-filtro-meso-wrapper">
-          <label for="estat-filtro-meso-input">Mesorregião</label>
-          <input
-            id="estat-filtro-meso-input"
-            type="text"
-            class="multiselect-input"
-            placeholder="Selecione mesorregiões"
-            autocomplete="off"
-          />
-          <div
-            id="estat-filtro-meso-suggestions"
-            class="suggestions"
-            role="listbox"
-            aria-multiselectable="true"
-            hidden
-          ></div>
-        </div>
-        <div class="tag-list" id="estat-filtro-meso-tags"></div>
-
-        <div class="multiselect" id="estat-filtro-micro-wrapper">
-          <label for="estat-filtro-micro-input">Microrregião</label>
-          <input
-            id="estat-filtro-micro-input"
-            type="text"
-            class="multiselect-input"
-            placeholder="Selecione microrregiões"
-            autocomplete="off"
-          />
-          <div
-            id="estat-filtro-micro-suggestions"
-            class="suggestions"
-            role="listbox"
-            aria-multiselectable="true"
-            hidden
-          ></div>
-        </div>
-        <div class="tag-list" id="estat-filtro-micro-tags"></div>
-
-        <div class="multiselect" id="estat-filtro-cidade-wrapper">
-          <label for="estat-filtro-cidade-input">Cidade (Município)</label>
-          <input
-            id="estat-filtro-cidade-input"
-            type="text"
-            class="multiselect-input"
-            placeholder="Selecione municípios"
-            autocomplete="off"
-          />
-          <div
-            id="estat-filtro-cidade-suggestions"
-            class="suggestions"
-            role="listbox"
-            aria-multiselectable="true"
-            hidden
-          ></div>
-        </div>
-        <div class="tag-list" id="estat-filtro-cidade-tags"></div>
       </div>
 
-      <div class="subcard">
-        <h3>Filtros por Segmento</h3>
-        <div class="multiselect" id="estat-filtro-cnae-wrapper">
-          <label for="estat-filtro-cnae-input">CNAE Fiscal Principal</label>
-          <input
-            id="estat-filtro-cnae-input"
-            type="text"
-            class="multiselect-input"
-            placeholder="Selecione códigos CNAE"
-            autocomplete="off"
-          />
-          <div
-            id="estat-filtro-cnae-suggestions"
-            class="suggestions"
-            role="listbox"
-            aria-multiselectable="true"
-            hidden
-          ></div>
-        </div>
-        <div class="tag-list" id="estat-filtro-cnae-tags"></div>
+      <div class="grid-2">
+        <div class="subcard">
+          <h3>Filtros por Região</h3>
+          <div class="multiselect" id="estat-filtro-regiao-wrapper">
+            <label for="estat-filtro-regiao-input">Região</label>
+            <input
+              id="estat-filtro-regiao-input"
+              type="text"
+              class="multiselect-input"
+              placeholder="Selecione uma ou mais regiões"
+              autocomplete="off"
+            />
+            <div
+              id="estat-filtro-regiao-suggestions"
+              class="suggestions"
+              role="listbox"
+              aria-multiselectable="true"
+              hidden
+            ></div>
+          </div>
+          <div class="tag-list" id="estat-filtro-regiao-tags"></div>
 
-        <div class="multiselect" id="estat-filtro-setor-wrapper">
-          <label for="estat-filtro-setor-input">Grande Setor</label>
-          <input
-            id="estat-filtro-setor-input"
-            type="text"
-            class="multiselect-input"
-            placeholder="Selecione grandes setores"
-            autocomplete="off"
-          />
-          <div
-            id="estat-filtro-setor-suggestions"
-            class="suggestions"
-            role="listbox"
-            aria-multiselectable="true"
-            hidden
-          ></div>
-        </div>
-        <div class="tag-list" id="estat-filtro-setor-tags"></div>
+          <div class="multiselect" id="estat-filtro-uf-wrapper">
+            <label for="estat-filtro-uf-input">UF</label>
+            <input
+              id="estat-filtro-uf-input"
+              type="text"
+              class="multiselect-input"
+              placeholder="Selecione uma ou mais UFs"
+              autocomplete="off"
+            />
+            <div
+              id="estat-filtro-uf-suggestions"
+              class="suggestions"
+              role="listbox"
+              aria-multiselectable="true"
+              hidden
+            ></div>
+          </div>
+          <div class="tag-list" id="estat-filtro-uf-tags"></div>
 
-        <div class="multiselect" id="estat-filtro-segmento-wrapper">
-          <label for="estat-filtro-segmento-input">Segmento de Mercado</label>
-          <input
-            id="estat-filtro-segmento-input"
-            type="text"
-            class="multiselect-input"
-            placeholder="Selecione segmentos de mercado"
-            autocomplete="off"
-          />
-          <div
-            id="estat-filtro-segmento-suggestions"
-            class="suggestions"
-            role="listbox"
-            aria-multiselectable="true"
-            hidden
-          ></div>
+          <div class="multiselect" id="estat-filtro-meso-wrapper">
+            <label for="estat-filtro-meso-input">Mesorregião</label>
+            <input
+              id="estat-filtro-meso-input"
+              type="text"
+              class="multiselect-input"
+              placeholder="Selecione mesorregiões"
+              autocomplete="off"
+            />
+            <div
+              id="estat-filtro-meso-suggestions"
+              class="suggestions"
+              role="listbox"
+              aria-multiselectable="true"
+              hidden
+            ></div>
+          </div>
+          <div class="tag-list" id="estat-filtro-meso-tags"></div>
+
+          <div class="multiselect" id="estat-filtro-micro-wrapper">
+            <label for="estat-filtro-micro-input">Microrregião</label>
+            <input
+              id="estat-filtro-micro-input"
+              type="text"
+              class="multiselect-input"
+              placeholder="Selecione microrregiões"
+              autocomplete="off"
+            />
+            <div
+              id="estat-filtro-micro-suggestions"
+              class="suggestions"
+              role="listbox"
+              aria-multiselectable="true"
+              hidden
+            ></div>
+          </div>
+          <div class="tag-list" id="estat-filtro-micro-tags"></div>
+
+          <div class="multiselect" id="estat-filtro-cidade-wrapper">
+            <label for="estat-filtro-cidade-input">Cidade (Município)</label>
+            <input
+              id="estat-filtro-cidade-input"
+              type="text"
+              class="multiselect-input"
+              placeholder="Selecione municípios"
+              autocomplete="off"
+            />
+            <div
+              id="estat-filtro-cidade-suggestions"
+              class="suggestions"
+              role="listbox"
+              aria-multiselectable="true"
+              hidden
+            ></div>
+          </div>
+          <div class="tag-list" id="estat-filtro-cidade-tags"></div>
         </div>
-        <div class="tag-list" id="estat-filtro-segmento-tags"></div>
+
+        <div class="subcard">
+          <h3>Filtros por Segmento</h3>
+          <div class="multiselect" id="estat-filtro-cnae-wrapper">
+            <label for="estat-filtro-cnae-input">CNAE Fiscal Principal</label>
+            <input
+              id="estat-filtro-cnae-input"
+              type="text"
+              class="multiselect-input"
+              placeholder="Selecione códigos CNAE"
+              autocomplete="off"
+            />
+            <div
+              id="estat-filtro-cnae-suggestions"
+              class="suggestions"
+              role="listbox"
+              aria-multiselectable="true"
+              hidden
+            ></div>
+          </div>
+          <div class="tag-list" id="estat-filtro-cnae-tags"></div>
+
+          <div class="multiselect" id="estat-filtro-setor-wrapper">
+            <label for="estat-filtro-setor-input">Grande Setor</label>
+            <input
+              id="estat-filtro-setor-input"
+              type="text"
+              class="multiselect-input"
+              placeholder="Selecione grandes setores"
+              autocomplete="off"
+            />
+            <div
+              id="estat-filtro-setor-suggestions"
+              class="suggestions"
+              role="listbox"
+              aria-multiselectable="true"
+              hidden
+            ></div>
+          </div>
+          <div class="tag-list" id="estat-filtro-setor-tags"></div>
+
+          <div class="multiselect" id="estat-filtro-segmento-wrapper">
+            <label for="estat-filtro-segmento-input">Segmento de Mercado</label>
+            <input
+              id="estat-filtro-segmento-input"
+              type="text"
+              class="multiselect-input"
+              placeholder="Selecione segmentos de mercado"
+              autocomplete="off"
+            />
+            <div
+              id="estat-filtro-segmento-suggestions"
+              class="suggestions"
+              role="listbox"
+              aria-multiselectable="true"
+              hidden
+            ></div>
+          </div>
+          <div class="tag-list" id="estat-filtro-segmento-tags"></div>
+        </div>
       </div>
-    </div>
+    </section>
   </section>
 
-  <section class="card estatistica-card">
-    <div class="card-header-row">
-      <h2>Estatísticas por Município (IBGE + Base CNPJ)</h2>
-    </div>
-
-    <p class="status-message" id="estatistica-status">
-      Realize uma pesquisa na aba "Lista CNPJ" para habilitar esta visão.
-    </p>
-
-    <div class="field-row">
-      <div>
-        <label>Contexto da análise</label>
-        <p class="helper-text" id="estatistica-contexto">—</p>
+  <section class="estat-subtab-panel" id="estat-sub-municipios" aria-label="Estatísticas Municipais">
+    <section class="card estatistica-card">
+      <div class="card-header-row">
+        <h2>Estatísticas Municipais (IBGE + Base CNPJ)</h2>
       </div>
-      <div>
-        <label for="estatistica-ano-select">Ano IBGE</label>
-        <select id="estatistica-ano-select">
-          <option value="">Ano mais recente disponível</option>
-        </select>
-        <p class="helper-text">
-          Fonte: IBGE / SIDRA – População municipal (tabela 6579).
-        </p>
+
+      <p class="status-message" id="estatistica-status">
+        Realize uma pesquisa na aba "Lista CNPJ" para habilitar esta visão.
+      </p>
+
+      <div class="field-row">
+        <div>
+          <label>Contexto da análise</label>
+          <p class="helper-text" id="estatistica-contexto">—</p>
+        </div>
+        <div>
+          <label for="estatistica-ano-select">Ano IBGE</label>
+          <select id="estatistica-ano-select">
+            <option value="">Ano mais recente disponível</option>
+          </select>
+          <p class="helper-text">
+            Fonte: IBGE / SIDRA – População municipal (tabela 6579).
+          </p>
+        </div>
       </div>
-    </div>
 
-    <p class="status-count" id="estatistica-resumo"></p>
+      <p class="status-count" id="estatistica-resumo"></p>
 
-    <div class="table-wrapper" style="max-height: 480px; overflow-y: auto;">
-      <table>
-        <thead>
-          <tr>
-            <th>Município</th>
-            <th>UF</th>
-            <th>População IBGE</th>
-            <th>Qtd. Empresas (filtro atual)</th>
-            <th>Empresas / 10 mil hab.</th>
-          </tr>
-        </thead>
-        <tbody id="estatistica-corpo">
-          <tr class="empty-state">
-            <td colspan="5">
-              Realize uma pesquisa na aba "Lista CNPJ" para carregar as estatísticas.
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+      <div class="table-wrapper" style="max-height: 480px; overflow-y: auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>Município</th>
+              <th>UF</th>
+              <th>População IBGE</th>
+              <th>Qtd. Empresas (filtro atual)</th>
+              <th>Empresas / 10 mil hab.</th>
+            </tr>
+          </thead>
+          <tbody id="estatistica-corpo">
+            <tr class="empty-state">
+              <td colspan="5">
+                Realize uma pesquisa na aba "Lista CNPJ" para carregar as estatísticas.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
   </section>
 
-  <section class="card estatistica-card">
-    <div class="card-header-row">
-      <h2>Quebras por CNAE, Setor, Segmento, Porte e Situação Cadastral</h2>
-    </div>
-
-    <p class="helper-text">
-      Consolidado apenas sobre a amostra atual da Lista CNPJ (após filtros aplicados).
-    </p>
-
-    <div class="grid-2">
-      <div class="subcard">
-        <h3>CNAE Fiscal Principal (Top)</h3>
-        <div class="table-wrapper mini">
-          <table>
-            <thead>
-              <tr>
-                <th>CNAE</th>
-                <th>Qtd. empresas</th>
-                <th>% da amostra</th>
-              </tr>
-            </thead>
-            <tbody id="estat-cnae-corpo">
-              <tr class="empty-state">
-                <td colspan="3">Sem dados para exibir.</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+  <section class="estat-subtab-panel" id="estat-sub-segmentos" aria-label="Estatísticas por Segmentos">
+    <section class="card estatistica-card">
+      <div class="card-header-row">
+        <h2>Estatísticas por Segmentos</h2>
       </div>
 
-      <div class="subcard">
-        <h3>Grande Setor</h3>
-        <div class="table-wrapper mini">
-          <table>
-            <thead>
-              <tr>
-                <th>Setor</th>
-                <th>Qtd. empresas</th>
-                <th>% da amostra</th>
-              </tr>
-            </thead>
-            <tbody id="estat-setor-corpo">
-              <tr class="empty-state">
-                <td colspan="3">Sem dados para exibir.</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <p class="helper-text">
+        Consolidado apenas sobre a amostra atual da Lista CNPJ (após filtros aplicados).
+      </p>
 
-      <div class="subcard">
-        <h3>Segmento de Mercado</h3>
-        <div class="table-wrapper mini">
-          <table>
-            <thead>
-              <tr>
-                <th>Segmento</th>
-                <th>Qtd. empresas</th>
-                <th>% da amostra</th>
-              </tr>
-            </thead>
-            <tbody id="estat-segmento-corpo">
-              <tr class="empty-state">
-                <td colspan="3">Sem dados para exibir.</td>
-              </tr>
-            </tbody>
-          </table>
+      <div class="grid-2">
+        <div class="subcard">
+          <h3>CNAE Fiscal Principal</h3>
+          <div class="table-wrapper mini">
+            <table>
+              <thead>
+                <tr>
+                  <th>CNAE</th>
+                  <th>Qtd. empresas</th>
+                  <th>% da amostra</th>
+                </tr>
+              </thead>
+              <tbody id="estat-seg-cnae-corpo">
+                <tr class="empty-state">
+                  <td colspan="3">Sem dados para exibir.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
 
-      <div class="subcard">
-        <h3>Porte da Empresa</h3>
-        <div class="table-wrapper mini">
-          <table>
-            <thead>
-              <tr>
-                <th>Porte</th>
-                <th>Qtd. empresas</th>
-                <th>% da amostra</th>
-              </tr>
-            </thead>
-            <tbody id="estat-porte-corpo">
-              <tr class="empty-state">
-                <td colspan="3">Sem dados para exibir.</td>
-              </tr>
-            </tbody>
-          </table>
+        <div class="subcard">
+          <h3>Grande Setor</h3>
+          <div class="table-wrapper mini">
+            <table>
+              <thead>
+                <tr>
+                  <th>Setor</th>
+                  <th>Qtd. empresas</th>
+                  <th>% da amostra</th>
+                </tr>
+              </thead>
+              <tbody id="estat-seg-setor-corpo">
+                <tr class="empty-state">
+                  <td colspan="3">Sem dados para exibir.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
 
-      <div class="subcard">
-        <h3>Situação Cadastral</h3>
-        <div class="table-wrapper mini">
-          <table>
-            <thead>
-              <tr>
-                <th>Situação</th>
-                <th>Qtd. empresas</th>
-                <th>% da amostra</th>
-              </tr>
-            </thead>
-            <tbody id="estat-situacao-corpo">
-              <tr class="empty-state">
-                <td colspan="3">Sem dados para exibir.</td>
-              </tr>
-            </tbody>
-          </table>
+        <div class="subcard">
+          <h3>Segmento de Mercado</h3>
+          <div class="table-wrapper mini">
+            <table>
+              <thead>
+                <tr>
+                  <th>Segmento</th>
+                  <th>Qtd. empresas</th>
+                  <th>% da amostra</th>
+                </tr>
+              </thead>
+              <tbody id="estat-seg-segmento-corpo">
+                <tr class="empty-state">
+                  <td colspan="3">Sem dados para exibir.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="subcard">
+          <h3>Porte da Empresa</h3>
+          <div class="table-wrapper mini">
+            <table>
+              <thead>
+                <tr>
+                  <th>Porte</th>
+                  <th>Qtd. empresas</th>
+                  <th>% da amostra</th>
+                </tr>
+              </thead>
+              <tbody id="estat-seg-porte-corpo">
+                <tr class="empty-state">
+                  <td colspan="3">Sem dados para exibir.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="subcard">
+          <h3>Situação Cadastral</h3>
+          <div class="table-wrapper mini">
+            <table>
+              <thead>
+                <tr>
+                  <th>Situação</th>
+                  <th>Qtd. empresas</th>
+                  <th>% da amostra</th>
+                </tr>
+              </thead>
+              <tbody id="estat-seg-situacao-corpo">
+                <tr class="empty-state">
+                  <td colspan="3">Sem dados para exibir.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
-    </div>
+    </section>
   </section>
 
-  <section class="card estatistica-card">
-    <div class="card-header-row">
-      <h2>Mortalidade de Empresas (Situação Cadastral)</h2>
-    </div>
-    <p class="helper-text" id="estat-mortalidade-resumo">Sem dados para exibir.</p>
-    <div class="table-wrapper mini">
-      <table>
-        <thead>
-          <tr>
-            <th>Situação</th>
-            <th>Qtd. empresas</th>
-            <th>% da amostra</th>
-          </tr>
-        </thead>
-        <tbody id="estat-mortalidade-corpo">
-          <tr class="empty-state">
-            <td colspan="3">Sem dados para exibir.</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+  <section class="estat-subtab-panel" id="estat-sub-mortalidade" aria-label="Mortalidade de Empresas">
+    <section class="card estatistica-card">
+      <div class="card-header-row">
+        <h2>Mortalidade de Empresas (Situação Cadastral)</h2>
+      </div>
+      <p class="helper-text" id="estat-mortalidade-resumo">Sem dados para exibir.</p>
+      <div class="table-wrapper mini">
+        <table>
+          <thead>
+            <tr>
+              <th>Situação</th>
+              <th>Qtd. empresas</th>
+              <th>% da amostra</th>
+            </tr>
+          </thead>
+          <tbody id="estat-mortalidade-corpo">
+            <tr class="empty-state">
+              <td colspan="3">Sem dados para exibir.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
   </section>
 
-  <section class="card estatistica-card">
-    <div class="card-header-row">
-      <h2>Dívida Ativa das Empresas</h2>
-    </div>
-    <div class="grid-2">
-      <div>
-        <p class="status-count" id="estat-divida-resumo">Sem dados para exibir.</p>
+  <section class="estat-subtab-panel" id="estat-sub-divida" aria-label="Dívida Ativa das Empresas">
+    <section class="card estatistica-card">
+      <div class="card-header-row">
+        <h2>Dívida Ativa das Empresas</h2>
       </div>
-      <div>
-        <ul class="helper-text" id="estat-divida-indicadores"></ul>
+      <div class="grid-2">
+        <div>
+          <p class="status-count" id="estat-divida-resumo">Sem dados para exibir.</p>
+        </div>
+        <div>
+          <ul class="helper-text" id="estat-divida-indicadores"></ul>
+        </div>
       </div>
-    </div>
-    <div class="table-wrapper mini">
-      <table>
-        <thead>
-          <tr>
-            <th>Situação</th>
-            <th>Qtd. empresas</th>
-            <th>Valor total da dívida</th>
-          </tr>
-        </thead>
-        <tbody id="estat-divida-corpo">
-          <tr class="empty-state">
-            <td colspan="3">Sem dados para exibir.</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+      <div class="table-wrapper mini">
+        <table>
+          <thead>
+            <tr>
+              <th>Situação</th>
+              <th>Qtd. empresas</th>
+              <th>Valor total da dívida</th>
+            </tr>
+          </thead>
+          <tbody id="estat-divida-corpo">
+            <tr class="empty-state">
+              <td colspan="3">Sem dados para exibir.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
   </section>
 
-  <section class="card estatistica-card">
-    <div class="card-header-row">
-      <h2>Capital Social das Empresas</h2>
-    </div>
-    <p class="helper-text" id="estat-capital-resumo">Sem dados para exibir.</p>
-    <div class="table-wrapper mini">
-      <table>
-        <thead>
-          <tr>
-            <th>Faixa de Capital</th>
-            <th>Qtd. empresas</th>
-            <th>% da amostra</th>
-          </tr>
-        </thead>
-        <tbody id="estat-capital-corpo">
-          <tr class="empty-state">
-            <td colspan="3">Sem dados para exibir.</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+  <section class="estat-subtab-panel" id="estat-sub-capital" aria-label="Capital Social das Empresas">
+    <section class="card estatistica-card">
+      <div class="card-header-row">
+        <h2>Capital Social das Empresas</h2>
+      </div>
+      <p class="helper-text" id="estat-capital-resumo">Sem dados para exibir.</p>
+      <div class="table-wrapper mini">
+        <table>
+          <thead>
+            <tr>
+              <th>Faixa de Capital</th>
+              <th>Qtd. empresas</th>
+              <th>% da amostra</th>
+            </tr>
+          </thead>
+          <tbody id="estat-capital-corpo">
+            <tr class="empty-state">
+              <td colspan="3">Sem dados para exibir.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
   </section>
 </section>
 
@@ -2815,12 +2889,39 @@ const rotaCheckNaoAtendidos = document.getElementById('rota-check-nao-atendidos'
     const estatisticaResumo = document.getElementById('estatistica-resumo');
     const estatisticaAnoSelect = document.getElementById('estatistica-ano-select');
     const estatisticaContexto = document.getElementById('estatistica-contexto');
+    const estatSubtabButtons = document.querySelectorAll('#estat-subtabs .subtab');
+    const estatSubtabPanels = document.querySelectorAll('.estat-subtab-panel');
     let estatisticaUfAtual = null;
     const estatisticaCacheIbge = new Map();
     let currentFetchController = null;
     let municipiosCache = [];
     let cnaeCache = [];
     let ultimoCnaeTermo = null;
+
+    // ======================================
+    // MÓDULO ESTATÍSTICA – FILTROS E SUB-ABAS
+    // ======================================
+    let multiselectsEstatistica = {
+      regiao: null,
+      uf: null,
+      mesorregiao: null,
+      microrregiao: null,
+      cidade: null,
+      cnae: null,
+      grandeSetor: null,
+      segmento: null
+    };
+
+    const filtrosEstatistica = {
+      regioes: [],
+      ufs: [],
+      mesorregioes: [],
+      microrregioes: [],
+      cidades: [],
+      cnaes: [],
+      grandesSetores: [],
+      segmentos: []
+    };
     let csvRegistros = [];
     let importacaoMunicipiosDePara = new Map();
     let importacaoMunicipiosDisponiveis = new Map();
@@ -9457,28 +9558,31 @@ function calcularDistanciaSimples(lat1, lon1, lat2, lon2) {
   // MÓDULO ESTATÍSTICA – FILTROS E ANÁLISES
   // ======================================
 
-  const filtrosEstatistica = {
-    regioes: [],
-    ufs: [],
-    mesorregioes: [],
-    microrregioes: [],
-    cidades: [],
-    cnaes: [],
-    grandesSetores: [],
-    segmentos: []
-  };
+  // SUB-ABAS INTERNAS DA ABA ESTATÍSTICA
+  function ativarSubtabEstatistica(idPainel) {
+    estatSubtabButtons.forEach(btn => {
+      const alvo = btn.getAttribute('data-subtab');
+      btn.classList.toggle('active', alvo === idPainel);
+    });
 
-  const multiselectsEstatistica = {};
+    estatSubtabPanels.forEach(painel => {
+      painel.classList.toggle('active', painel.id === idPainel);
+    });
+  }
 
-  function criarMultiselectEstatistica({
-    inputId,
-    suggestionsId,
-    tagsId,
-    chaveFiltro
-  }) {
+  estatSubtabButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const alvo = btn.getAttribute('data-subtab');
+      ativarSubtabEstatistica(alvo);
+    });
+  });
+
+  function criarMultiselectEstatistica(wrapperId, inputId, chaveFiltro) {
     const input = document.getElementById(inputId);
-    const suggestions = document.getElementById(suggestionsId);
-    const tags = document.getElementById(tagsId);
+    const suggestions = document.getElementById(
+      `${inputId.replace('-input', '')}-suggestions`
+    );
+    const tags = document.getElementById(`${wrapperId.replace('-wrapper', '')}-tags`);
     if (!input || !suggestions || !tags) return null;
 
     let opcoes = [];
@@ -9486,7 +9590,6 @@ function calcularDistanciaSimples(lat1, lon1, lat2, lon2) {
 
     function atualizarFiltrosGlobais() {
       filtrosEstatistica[chaveFiltro] = Array.from(selecionados);
-      atualizarAbaEstatistica();
     }
 
     function renderTags() {
@@ -9509,6 +9612,7 @@ function calcularDistanciaSimples(lat1, lon1, lat2, lon2) {
           renderTags();
           renderSugestoes(false);
           atualizarFiltrosGlobais();
+          aplicarFiltrosEstatistica();
         });
         chip.append(remover);
         fragment.append(chip);
@@ -9526,6 +9630,7 @@ function calcularDistanciaSimples(lat1, lon1, lat2, lon2) {
       renderTags();
       renderSugestoes(true);
       atualizarFiltrosGlobais();
+      aplicarFiltrosEstatistica();
     }
 
     function renderSugestoes(aberto) {
@@ -9591,76 +9696,37 @@ function calcularDistanciaSimples(lat1, lon1, lat2, lon2) {
       renderTags();
       renderSugestoes(false);
       atualizarFiltrosGlobais();
+      aplicarFiltrosEstatistica();
     }
 
     return { atualizarOpcoes, limparSelecao };
   }
 
   function inicializarEstruturasFiltrosEstatistica() {
-    multiselectsEstatistica.regioes =
-      multiselectsEstatistica.regioes ||
-      criarMultiselectEstatistica({
-        inputId: 'estat-filtro-regiao-input',
-        suggestionsId: 'estat-filtro-regiao-suggestions',
-        tagsId: 'estat-filtro-regiao-tags',
-        chaveFiltro: 'regioes'
-      });
-    multiselectsEstatistica.ufs =
-      multiselectsEstatistica.ufs ||
-      criarMultiselectEstatistica({
-        inputId: 'estat-filtro-uf-input',
-        suggestionsId: 'estat-filtro-uf-suggestions',
-        tagsId: 'estat-filtro-uf-tags',
-        chaveFiltro: 'ufs'
-      });
-    multiselectsEstatistica.mesorregioes =
-      multiselectsEstatistica.mesorregioes ||
-      criarMultiselectEstatistica({
-        inputId: 'estat-filtro-meso-input',
-        suggestionsId: 'estat-filtro-meso-suggestions',
-        tagsId: 'estat-filtro-meso-tags',
-        chaveFiltro: 'mesorregioes'
-      });
-    multiselectsEstatistica.microrregioes =
-      multiselectsEstatistica.microrregioes ||
-      criarMultiselectEstatistica({
-        inputId: 'estat-filtro-micro-input',
-        suggestionsId: 'estat-filtro-micro-suggestions',
-        tagsId: 'estat-filtro-micro-tags',
-        chaveFiltro: 'microrregioes'
-      });
-    multiselectsEstatistica.cidades =
-      multiselectsEstatistica.cidades ||
-      criarMultiselectEstatistica({
-        inputId: 'estat-filtro-cidade-input',
-        suggestionsId: 'estat-filtro-cidade-suggestions',
-        tagsId: 'estat-filtro-cidade-tags',
-        chaveFiltro: 'cidades'
-      });
-    multiselectsEstatistica.cnaes =
-      multiselectsEstatistica.cnaes ||
-      criarMultiselectEstatistica({
-        inputId: 'estat-filtro-cnae-input',
-        suggestionsId: 'estat-filtro-cnae-suggestions',
-        tagsId: 'estat-filtro-cnae-tags',
-        chaveFiltro: 'cnaes'
-      });
-    multiselectsEstatistica.grandesSetores =
-      multiselectsEstatistica.grandesSetores ||
-      criarMultiselectEstatistica({
-        inputId: 'estat-filtro-setor-input',
-        suggestionsId: 'estat-filtro-setor-suggestions',
-        tagsId: 'estat-filtro-setor-tags',
-        chaveFiltro: 'grandesSetores'
-      });
-    multiselectsEstatistica.segmentos =
-      multiselectsEstatistica.segmentos ||
-      criarMultiselectEstatistica({
-        inputId: 'estat-filtro-segmento-input',
-        suggestionsId: 'estat-filtro-segmento-suggestions',
-        tagsId: 'estat-filtro-segmento-tags',
-        chaveFiltro: 'segmentos'
-      });
+    multiselectsEstatistica.regiao =
+      multiselectsEstatistica.regiao ||
+      criarMultiselectEstatistica('estat-filtro-regiao-wrapper', 'estat-filtro-regiao-input', 'regioes');
+    multiselectsEstatistica.uf =
+      multiselectsEstatistica.uf ||
+      criarMultiselectEstatistica('estat-filtro-uf-wrapper', 'estat-filtro-uf-input', 'ufs');
+    multiselectsEstatistica.mesorregiao =
+      multiselectsEstatistica.mesorregiao ||
+      criarMultiselectEstatistica('estat-filtro-meso-wrapper', 'estat-filtro-meso-input', 'mesorregioes');
+    multiselectsEstatistica.microrregiao =
+      multiselectsEstatistica.microrregiao ||
+      criarMultiselectEstatistica('estat-filtro-micro-wrapper', 'estat-filtro-micro-input', 'microrregioes');
+    multiselectsEstatistica.cidade =
+      multiselectsEstatistica.cidade ||
+      criarMultiselectEstatistica('estat-filtro-cidade-wrapper', 'estat-filtro-cidade-input', 'cidades');
+    multiselectsEstatistica.cnae =
+      multiselectsEstatistica.cnae ||
+      criarMultiselectEstatistica('estat-filtro-cnae-wrapper', 'estat-filtro-cnae-input', 'cnaes');
+    multiselectsEstatistica.grandeSetor =
+      multiselectsEstatistica.grandeSetor ||
+      criarMultiselectEstatistica('estat-filtro-setor-wrapper', 'estat-filtro-setor-input', 'grandesSetores');
+    multiselectsEstatistica.segmento =
+      multiselectsEstatistica.segmento ||
+      criarMultiselectEstatistica('estat-filtro-segmento-wrapper', 'estat-filtro-segmento-input', 'segmentos');
   }
 
   function inicializarFiltrosEstatistica() {
@@ -9701,32 +9767,38 @@ function calcularDistanciaSimples(lat1, lon1, lat2, lon2) {
     const opcoesSetor = mapear(base.map(emp => emp.ind_grande_setor || ''));
     const opcoesSegmento = mapear(base.map(emp => emp.nom_segmento_mercado || ''));
 
-    if (multiselectsEstatistica.regioes)
-      multiselectsEstatistica.regioes.atualizarOpcoes(opcoesRegioes);
-    if (multiselectsEstatistica.ufs)
-      multiselectsEstatistica.ufs.atualizarOpcoes(opcoesUfs);
-    if (multiselectsEstatistica.mesorregioes)
-      multiselectsEstatistica.mesorregioes.atualizarOpcoes(opcoesMeso);
-    if (multiselectsEstatistica.microrregioes)
-      multiselectsEstatistica.microrregioes.atualizarOpcoes(opcoesMicro);
-    if (multiselectsEstatistica.cidades)
-      multiselectsEstatistica.cidades.atualizarOpcoes(opcoesCidade);
-    if (multiselectsEstatistica.cnaes)
-      multiselectsEstatistica.cnaes.atualizarOpcoes(opcoesCnae);
-    if (multiselectsEstatistica.grandesSetores)
-      multiselectsEstatistica.grandesSetores.atualizarOpcoes(opcoesSetor);
-    if (multiselectsEstatistica.segmentos)
-      multiselectsEstatistica.segmentos.atualizarOpcoes(opcoesSegmento);
+    if (multiselectsEstatistica.regiao)
+      multiselectsEstatistica.regiao.atualizarOpcoes(opcoesRegioes);
+    if (multiselectsEstatistica.uf)
+      multiselectsEstatistica.uf.atualizarOpcoes(opcoesUfs);
+    if (multiselectsEstatistica.mesorregiao)
+      multiselectsEstatistica.mesorregiao.atualizarOpcoes(opcoesMeso);
+    if (multiselectsEstatistica.microrregiao)
+      multiselectsEstatistica.microrregiao.atualizarOpcoes(opcoesMicro);
+    if (multiselectsEstatistica.cidade)
+      multiselectsEstatistica.cidade.atualizarOpcoes(opcoesCidade);
+    if (multiselectsEstatistica.cnae)
+      multiselectsEstatistica.cnae.atualizarOpcoes(opcoesCnae);
+    if (multiselectsEstatistica.grandeSetor)
+      multiselectsEstatistica.grandeSetor.atualizarOpcoes(opcoesSetor);
+    if (multiselectsEstatistica.segmento)
+      multiselectsEstatistica.segmento.atualizarOpcoes(opcoesSegmento);
   }
 
   function limparFiltrosEstatistica() {
     Object.keys(filtrosEstatistica).forEach(chave => {
       filtrosEstatistica[chave] = [];
-      const instancia = multiselectsEstatistica[chave];
+    });
+
+    Object.values(multiselectsEstatistica).forEach(instancia => {
       if (instancia && typeof instancia.limparSelecao === 'function') {
         instancia.limparSelecao();
       }
     });
+  }
+
+  function aplicarFiltrosEstatistica() {
+    atualizarAbaEstatistica();
   }
 
   function filtrarEmpresasParaEstatistica() {
@@ -9760,6 +9832,13 @@ function calcularDistanciaSimples(lat1, lon1, lat2, lon2) {
       limparBtn.addEventListener('click', () => {
         limparFiltrosEstatistica();
         atualizarAbaEstatistica();
+      });
+    }
+
+    const aplicarBtn = document.getElementById('estat-aplicar-filtros-btn');
+    if (aplicarBtn) {
+      aplicarBtn.addEventListener('click', () => {
+        aplicarFiltrosEstatistica();
       });
     }
   }
@@ -9871,11 +9950,11 @@ function calcularDistanciaSimples(lat1, lon1, lat2, lon2) {
       porSituacao
     } = quebras || {};
 
-    const corpoCnae = document.getElementById('estat-cnae-corpo');
-    const corpoSetor = document.getElementById('estat-setor-corpo');
-    const corpoSegmento = document.getElementById('estat-segmento-corpo');
-    const corpoPorte = document.getElementById('estat-porte-corpo');
-    const corpoSituacao = document.getElementById('estat-situacao-corpo');
+    const corpoCnae = document.getElementById('estat-seg-cnae-corpo');
+    const corpoSetor = document.getElementById('estat-seg-setor-corpo');
+    const corpoSegmento = document.getElementById('estat-seg-segmento-corpo');
+    const corpoPorte = document.getElementById('estat-seg-porte-corpo');
+    const corpoSituacao = document.getElementById('estat-seg-situacao-corpo');
 
     preencherTabelaResumoEstatistica(corpoCnae, porCnae, 20);
     preencherTabelaResumoEstatistica(corpoSetor, porSetor, 20);
