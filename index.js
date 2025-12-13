@@ -130,8 +130,10 @@ function chunkArray(array, tamanho) {
 // -----------------------------------------------------
 app.get('/buscar', async function (req, res) {
   let conn;
-  let sql = '';
+  let sqlGerado = '';
   let params = [];
+  const debugAtivo = process.env.NODE_ENV !== 'production' || req.query.debug === '1';
+
   try {
     aplicarCabecalhosSemCache(res);
 
@@ -141,58 +143,96 @@ app.get('/buscar', async function (req, res) {
       return;
     }
 
-    // Nome da View (Ex: v_empresas_ativas_rs)
     const tabelaAlvo = `v_empresas_ativas_${uf.toLowerCase()}`;
 
-    // Filtros recebidos do Frontend
     const termoBusca = typeof req.query.q === 'string' ? req.query.q.trim() : '';
     const filtroSetor = req.query.setor ? String(req.query.setor).trim() : '';
     const filtroSegmento = req.query.segmento ? String(req.query.segmento).trim() : '';
-    
+
     const municipios = normalizarListaEntrada(req.query.municipio);
-    const cnaesFiltro = normalizarListaEntrada(req.query.cnae).map(function (c) {
-      return c.replace(/\D+/g, '');
-    }).filter(function (c) { return c !== ''; });
+    const cnaesFiltro = normalizarListaEntrada(req.query.cnae)
+      .map(function (c) { return c.replace(/\D+/g, ''); })
+      .filter(function (c) { return c !== ''; });
     const situacoes = normalizarListaEntrada(req.query.situacao);
     const portes = normalizarListaEntrada(req.query.porte);
 
     conn = await pool.getConnection();
-    
-    // Verifica existência da view
+
     const [check] = await conn.query(`SHOW TABLES LIKE '${tabelaAlvo}'`);
     if (check.length === 0) {
       return res.status(404).json({ erro: `View não encontrada para ${uf}. Execute o script SQL de atualização.` });
     }
 
-    params = [];
-    const filtros = ['v.uf = ?']; // Alias v para a view
-    params.push(uf);
+    const [colunasView] = await conn.query(`SHOW COLUMNS FROM \`${tabelaAlvo}\``);
+    const colunasDisponiveis = new Set(colunasView.map(c => c.Field));
 
-    // 1. Filtros de Negócio (Setor/Segmento)
-    if (filtroSetor) {
+    function colunaExiste(nome) {
+      return colunasDisponiveis.has(nome);
+    }
+
+    function selecionar(nomeColuna, alias) {
+      const aliasFinal = alias || nomeColuna;
+      if (colunaExiste(nomeColuna)) {
+        return `v.${nomeColuna}` + (aliasFinal !== nomeColuna ? ` AS ${aliasFinal}` : '');
+      }
+      console.warn(`[BUSCAR] Coluna ausente na view ${tabelaAlvo}: ${nomeColuna}. Preenchendo como NULL (${aliasFinal}).`);
+      return `NULL AS ${aliasFinal}`;
+    }
+
+    params = [];
+    const filtros = [];
+
+    if (colunaExiste('uf')) {
+      filtros.push('v.uf = ?');
+      params.push(uf);
+    }
+
+    const possuiCnaePrincipal = colunaExiste('cnae_fiscal_principal');
+    const joinCategoria = possuiCnaePrincipal
+      ? `LEFT JOIN tab_cnae_categorias cat ON cat.cod_divisao = LEFT(
+          REPLACE(REPLACE(REPLACE(v.cnae_fiscal_principal, '.', ''), '/', ''), '-', ''), 2
+        )`
+      : '';
+
+    if ((filtroSetor || filtroSegmento) && !joinCategoria) {
+      return res.status(400).json({
+        erro: 'A view selecionada não possui CNAE para filtrar por Setor/Segmento.',
+        uf
+      });
+    }
+
+    if (filtroSetor && joinCategoria) {
       filtros.push('cat.ind_grande_setor = ?');
       params.push(filtroSetor);
     }
-    if (filtroSegmento) {
+    if (filtroSegmento && joinCategoria) {
       filtros.push('cat.nom_segmento_mercado = ?');
       params.push(filtroSegmento);
     }
 
-    // 2. Filtro de Texto (Busca Geral)
     if (termoBusca) {
       const termo = '%' + termoBusca + '%';
-      filtros.push('(v.razao_social LIKE ? OR v.nome_fantasia LIKE ? OR v.cnpj_completo LIKE ? OR v.bairro LIKE ?)');
-      params.push(termo, termo, termo, termo);
+      const colunasTexto = [];
+      if (colunaExiste('razao_social')) colunasTexto.push('v.razao_social LIKE ?');
+      if (colunaExiste('nome_fantasia')) colunasTexto.push('v.nome_fantasia LIKE ?');
+      if (colunaExiste('cnpj_completo')) colunasTexto.push('v.cnpj_completo LIKE ?');
+      if (colunaExiste('bairro')) colunasTexto.push('v.bairro LIKE ?');
+
+      if (colunasTexto.length) {
+        filtros.push(`(${colunasTexto.join(' OR ')})`);
+        for (let i = 0; i < colunasTexto.length; i++) {
+          params.push(termo);
+        }
+      }
     }
 
-    // 3. Filtros Específicos
-    if (municipios.length) {
+    if (municipios.length && colunaExiste('municipio_codigo')) {
       const placeholders = municipios.map(function () { return '?'; }).join(', ');
       filtros.push(`v.municipio_codigo IN (${placeholders})`);
       params.push.apply(params, municipios);
     }
 
-    if (cnaesFiltro.length) {
+    if (cnaesFiltro.length && possuiCnaePrincipal) {
       const clausulas = cnaesFiltro.map(function () {
         return "(REPLACE(REPLACE(REPLACE(v.cnae_fiscal_principal, '.', ''), '/', ''), '-', '') = ?)";
       });
@@ -202,42 +242,47 @@ app.get('/buscar', async function (req, res) {
       });
     }
 
-    if (situacoes.length) {
+    if (situacoes.length && colunaExiste('situacao_inscricao')) {
       const placeholders = situacoes.map(function () { return '?'; }).join(', ');
       filtros.push(`v.situacao_inscricao IN (${placeholders})`);
       params.push.apply(params, situacoes);
     }
 
-    if (portes.length) {
+    if (portes.length && colunaExiste('porte_empresa')) {
       const placeholders = portes.map(function () { return '?'; }).join(', ');
-      filtros.push(`v.porte_empresa IN (${placeholders})`); 
+      filtros.push(`v.porte_empresa IN (${placeholders})`);
       params.push.apply(params, portes);
     }
 
-    // QUERY SQL COMPLETA (Usando Template String com crases `)
-    // Ajuste para a aba Estatística: garantir joins corretos e campos territoriais completos
-    const sql = `
+    const camposSelect = [
+      selecionar('cnpj_completo'),
+      selecionar('razao_social'),
+      selecionar('nome_fantasia'),
+      selecionar('logradouro'),
+      selecionar('numero'),
+      selecionar('complemento'),
+      selecionar('bairro'),
+      selecionar('cep'),
+      selecionar('ddd_1'),
+      selecionar('telefone_1'),
+      selecionar('ddd_2'),
+      selecionar('telefone_2'),
+      selecionar('email', 'correio_eletronico'),
+      selecionar('uf'),
+      selecionar('municipio_codigo'),
+      selecionar('municipio_nome'),
+      selecionar('cnae_fiscal_principal'),
+      selecionar('porte_empresa'),
+      selecionar('situacao_inscricao', 'situacao_cadastral'),
+      selecionar('capital_social'),
+      selecionar('motivo_situacao_cadastral'),
+      selecionar('latitude', 'lat'),
+      selecionar('longitude', 'lon')
+    ];
+
+    sqlGerado = `
       SELECT
-        v.cnpj_completo,
-        v.razao_social,
-        v.nome_fantasia,
-        v.logradouro,
-        v.numero,
-        v.complemento,
-        v.bairro,
-        v.cep,
-
-        -- Contatos
-        v.ddd_1,
-        v.telefone_1,
-        v.ddd_2,
-        v.telefone_2,
-        v.email AS correio_eletronico,
-
-        -- Identificação territorial
-        v.uf,
-        v.municipio_codigo,
-        v.municipio_nome,
+        ${camposSelect.join(',\n        ')},
         dim.ibge_id              AS municipio_ibge_id,
         dim.regiao_sigla         AS regiao_sigla,
         dim.regiao_nome          AS regiao_nome,
@@ -245,65 +290,55 @@ app.get('/buscar', async function (req, res) {
         dim.mesorregiao_nome     AS mesorregiao_nome,
         dim.microrregiao_id      AS microrregiao_id,
         dim.microrregiao_nome    AS microrregiao_nome,
-
-        -- Segmentação de negócio
-        v.cnae_fiscal_principal,
         cat.ind_grande_setor,
         cat.nom_segmento_mercado,
-
-        -- Porte / situação / capital
-        v.porte_empresa,
-        v.situacao_inscricao AS situacao_cadastral,
-        sc.sit_descricao         AS situacao_cadastral_descricao,
-        v.capital_social,
-
-        v.motivo_situacao_cadastral,
         mc.mot_descricao AS motivo_situacao_cadastral_descricao,
-
-        v.latitude AS lat,
-        v.longitude AS lon,
-
-        -- Dívida ativa consolidada para a aba Estatística
-        COALESCE(da.tem_divida_ativa, 0) AS tem_divida_ativa,
+        sc.sit_descricao AS situacao_cadastral_descricao,
+        CASE WHEN da.valor_divida_ativa_total IS NOT NULL AND da.valor_divida_ativa_total > 0 THEN 1 ELSE 0 END AS tem_divida_ativa,
         COALESCE(da.valor_divida_ativa_total, 0) AS valor_divida_ativa_total
-
       FROM ${tabelaAlvo} v
-      -- Joins auxiliares (mantidos em ordem para compatibilidade com a aba Estatística)
       LEFT JOIN dim_ibge_municipios dim
              ON dim.uf_sigla = v.uf
             AND UPPER(REPLACE(dim.nome, "'", '')) = v.municipio_nome
-      LEFT JOIN tab_cnae_categorias cat ON cat.cod_divisao = LEFT(
-        REPLACE(REPLACE(REPLACE(v.cnae_fiscal_principal, '.', ''), '/', ''), '-', ''), 2
-      )
+      ${joinCategoria}
       LEFT JOIN d_motivos_situacao_cadastral mc ON mc.mot_codigo = v.motivo_situacao_cadastral
       LEFT JOIN d_situacoes_cadastrais sc      ON sc.sit_codigo = v.situacao_inscricao
       LEFT JOIN (
-        SELECT
-          dva_cnpj AS cnpj,
-          1 AS tem_divida_ativa,
-          SUM(dva_valor_consolidado) AS valor_divida_ativa_total
+        SELECT dva_cnpj AS cnpj, 1 AS tem_divida_ativa, SUM(dva_valor_consolidado) AS valor_divida_ativa_total
         FROM divida_ativa
         GROUP BY dva_cnpj
       ) da ON da.cnpj = v.cnpj_completo
+      ${filtros.length ? 'WHERE ' + filtros.join(' AND ') : ''}
+      ORDER BY ${colunaExiste('razao_social') ? 'v.razao_social' : 'v.cnpj_completo'}
+    `;
 
-      WHERE ${filtros.join(' AND ')}
-      ORDER BY v.razao_social
-      `;
-
-    console.log('[BUSCAR-SQL-GERADO]', sql);
+    console.log('[BUSCAR-SQL-GERADO]', sqlGerado);
     console.log('[BUSCAR-PARAMS]', params);
     console.log(`[BUSCA] Consultando ${tabelaAlvo}...`);
 
-    const [rows] = await conn.query(sql, params);
+    const [rows] = await conn.query(sqlGerado, params);
 
     console.log(`[BUSCAR] Retornou ${rows.length} registros.`);
     res.json(rows);
 
   } catch (err) {
-    console.error('[BUSCAR-ERRO-SQL]', err);
-    console.error('[BUSCAR-SQL-GERADO]', err && err.sql ? err.sql : sql);
+    const detalhesErro = {
+      code: err && err.code,
+      errno: err && err.errno,
+      sqlState: err && err.sqlState,
+      sqlMessage: err && err.sqlMessage,
+      sql: err && err.sql ? err.sql : sqlGerado
+    };
+
+    console.error('[BUSCAR-ERRO-SQL]', detalhesErro);
     console.error('[BUSCAR-PARAMS]', err && err.parameters ? err.parameters : params);
-    res.status(500).json({ erro: 'Erro ao buscar dados' });
+
+    const payload = { erro: 'Erro ao buscar dados' };
+    if (debugAtivo) {
+      payload.detalhes = detalhesErro;
+    }
+
+    res.status(500).json(payload);
   } finally {
     if (conn) conn.release();
   }
@@ -504,173 +539,6 @@ app.get('/situacoes-cadastrais', async function (req, res) {
   }
 });
 
-// -----------------------------------------------------
-// ROTA: /buscar  (busca principal usada no front)
-// -----------------------------------------------------
-app.get('/buscar', async function (req, res) {
-  let conn;
-  try {
-    aplicarCabecalhosSemCache(res);
-
-    const uf = normalizarUf(req.query.uf);
-    if (!uf) {
-      res.status(400).json({ erro: 'UF invalida. Informe uma sigla com 2 letras.' });
-      return;
-    }
-
-    // Nome da View
-    const tabelaAlvo = `v_empresas_ativas_${uf.toLowerCase()}`;
-
-    // Filtros recebidos do Frontend
-    const termoBusca = typeof req.query.q === 'string' ? req.query.q.trim() : '';
-    const filtroSetor = req.query.setor ? String(req.query.setor).trim() : '';
-    const filtroSegmento = req.query.segmento ? String(req.query.segmento).trim() : '';
-    
-    const municipios = normalizarListaEntrada(req.query.municipio);
-    const cnaesFiltro = normalizarListaEntrada(req.query.cnae).map(function (c) {
-      return c.replace(/\D+/g, '');
-    }).filter(function (c) { return c !== ''; });
-    const situacoes = normalizarListaEntrada(req.query.situacao);
-    const portes = normalizarListaEntrada(req.query.porte);
-
-    conn = await pool.getConnection();
-    
-    // Verifica existência da view
-    const [check] = await conn.query(`SHOW TABLES LIKE '${tabelaAlvo}'`);
-    if (check.length === 0) {
-      return res.status(404).json({ erro: `View não encontrada para ${uf}. Execute o script SQL de atualização.` });
-    }
-
-    const params = [];
-    const filtros = ['v.uf = ?']; 
-    params.push(uf);
-
-    // --- 1. Filtros de Negócio (Setor/Segmento) ---
-    if (filtroSetor) {
-      filtros.push('cat.ind_grande_setor = ?');
-      params.push(filtroSetor);
-    }
-    if (filtroSegmento) {
-      filtros.push('cat.nom_segmento_mercado = ?');
-      params.push(filtroSegmento);
-    }
-
-    // --- 2. Filtro de Texto (Busca Geral) ---
-    if (termoBusca) {
-      const termo = '%' + termoBusca + '%';
-      filtros.push('(v.razao_social LIKE ? OR v.nome_fantasia LIKE ? OR v.cnpj_completo LIKE ? OR v.bairro LIKE ?)');
-      params.push(termo, termo, termo, termo);
-    }
-
-    // --- 3. Filtros Específicos ---
-    if (municipios.length) {
-      const placeholders = municipios.map(function () { return '?'; }).join(', ');
-      filtros.push(`v.municipio_codigo IN (${placeholders})`);
-      params.push.apply(params, municipios);
-    }
-
-    if (cnaesFiltro.length) {
-      const clausulas = cnaesFiltro.map(function () {
-        return "(REPLACE(REPLACE(REPLACE(v.cnae_fiscal_principal, '.', ''), '/', ''), '-', '') = ?)";
-      });
-      filtros.push(`(${clausulas.join(' OR ')})`);
-      cnaesFiltro.forEach(function (c) {
-        params.push(c);
-      });
-    }
-
-    if (situacoes.length) {
-      const placeholders = situacoes.map(function () { return '?'; }).join(', ');
-      filtros.push(`v.situacao_inscricao IN (${placeholders})`);
-      params.push.apply(params, situacoes);
-    }
-
-    if (portes.length) {
-      const placeholders = portes.map(function () { return '?'; }).join(', ');
-      filtros.push(`v.porte_empresa IN (${placeholders})`); 
-      params.push.apply(params, portes);
-    }
-
-    // QUERY SQL COMPLETA (Usando crases para evitar erro de sintaxe)
-    const sql = `
-      SELECT
-        v.cnpj_completo,
-        v.razao_social,
-        v.nome_fantasia,
-        v.logradouro,
-        v.numero,
-        v.complemento,
-        v.bairro,
-        v.cep,
-        v.municipio_codigo,
-        v.municipio_nome,
-        v.uf,
-        dim.regiao_sigla,
-        dim.regiao_nome,
-        dim.microrregiao_id,
-        dim.microrregiao_nome,
-        dim.mesorregiao_id,
-        dim.mesorregiao_nome,
-
-        v.ddd_1,
-        v.telefone_1,
-        v.ddd_2,
-        v.telefone_2,
-        v.email AS correio_eletronico,
-
-        v.cnae_fiscal_principal,
-        v.porte_empresa,
-        v.situacao_inscricao AS situacao_cadastral,
-        v.capital_social,
-
-        v.motivo_situacao_cadastral,
-        mc.mot_descricao AS motivo_situacao_cadastral_descricao,
-        sc.sit_descricao AS situacao_cadastral_descricao,
-
-        cat.ind_grande_setor,
-        cat.nom_segmento_mercado,
-
-        v.latitude AS lat,
-        v.longitude AS lon,
-
-        CASE
-          WHEN da.valor_divida_ativa_total IS NOT NULL AND da.valor_divida_ativa_total > 0 THEN 1
-          ELSE 0
-        END AS tem_divida_ativa,
-        COALESCE(da.valor_divida_ativa_total, 0) AS valor_divida_ativa_total
-
-      FROM ${tabelaAlvo} v
-      -- Joins auxiliares
-      LEFT JOIN tab_cnae_categorias cat ON cat.cod_divisao = LEFT(REPLACE(REPLACE(REPLACE(v.cnae_fiscal_principal, '.', ''), '/', ''), '-', ''), 2)
-      LEFT JOIN d_motivos_situacao_cadastral mc ON mc.mot_codigo = v.motivo_situacao_cadastral
-      LEFT JOIN d_situacoes_cadastrais sc ON sc.sit_codigo = v.situacao_inscricao
-      LEFT JOIN dim_ibge_municipios dim ON dim.municipio_codigo = v.municipio_codigo
-      LEFT JOIN (
-        SELECT
-          dva_cnpj AS cnpj,
-          SUM(dva_valor_consolidado) AS valor_divida_ativa_total
-        FROM divida_ativa
-        GROUP BY dva_cnpj
-      ) da ON da.cnpj = v.cnpj_completo
-
-      WHERE ${filtros.join(' AND ')}
-      ORDER BY v.razao_social
-      LIMIT 2000
-    `;
-
-    console.log(`[BUSCA] Consultando ${tabelaAlvo}...`);
-    const [rows] = await conn.query(sql, params); // A linha que estava dando erro era aqui
-    console.log(`[BUSCA] Retornou ${rows.length} registros.`);
-    
-    res.json(rows);
-
-  } catch (err) {
-    console.error('>>> ERRO SQL NA BUSCA:', err.sqlMessage || err.message);
-    res.status(500).json({ erro: 'Erro ao buscar dados', detalhes: err.message });
-  } finally {
-    if (conn) conn.release();
-  }
-});
 // -----------------------------------------------------
 // ROTA: /importacao/cnpjs (Análise de Inativos BLINDADA)
 // -----------------------------------------------------
