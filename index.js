@@ -214,28 +214,28 @@ app.get('/buscar', async function (req, res) {
 
     // QUERY SQL COMPLETA (Usando Template String com crases `)
     const sql = `
-      SELECT 
-        v.cnpj_completo, 
-        v.razao_social, 
-        v.nome_fantasia, 
-        v.logradouro, 
-        v.numero, 
-        v.complemento, 
-        v.bairro, 
-        v.cep, 
-        v.municipio_codigo, 
-        v.municipio_nome, 
+      SELECT
+        v.cnpj_completo,
+        v.razao_social,
+        v.nome_fantasia,
+        v.logradouro,
+        v.numero,
+        v.complemento,
+        v.bairro,
+        v.cep,
+        v.municipio_codigo,
+        v.municipio_nome,
         v.uf,
-        
-        v.ddd_1, 
-        v.telefone_1, 
-        v.ddd_2, 
-        v.telefone_2, 
+
+        v.ddd_1,
+        v.telefone_1,
+        v.ddd_2,
+        v.telefone_2,
         v.email AS correio_eletronico,
-        
-        v.cnae_fiscal_principal, 
+
+        v.cnae_fiscal_principal,
         v.situacao_inscricao AS situacao_cadastral,
-        
+
         v.motivo_situacao_cadastral,
         mc.mot_descricao AS motivo_situacao_cadastral_descricao,
         sc.sit_descricao AS situacao_cadastral_descricao,
@@ -243,17 +243,41 @@ app.get('/buscar', async function (req, res) {
         cat.ind_grande_setor,
         cat.nom_segmento_mercado,
 
+        v.porte_empresa,
+        v.capital_social,
+
         v.latitude AS lat,
-        v.longitude AS lon
+        v.longitude AS lon,
+
+        -- Campos de localização geográfica (região, mesorregião, microrregião)
+        COALESCE(m.regiao_nome, '') AS regiao_nome,
+        COALESCE(m.regiao_sigla, '') AS regiao_sigla,
+        COALESCE(m.mesorregiao_nome, '') AS mesorregiao_nome,
+        COALESCE(m.mesorregiao_id, '') AS mesorregiao_id,
+        COALESCE(m.microrregiao_nome, '') AS microrregiao_nome,
+        COALESCE(m.microrregiao_id, '') AS microrregiao_id,
+
+        -- Campos de dívida ativa
+        COALESCE(div.tem_divida, 0) AS tem_divida_ativa,
+        COALESCE(div.valor_total, 0) AS valor_divida_ativa_total
 
       FROM ${tabelaAlvo} v
       -- Joins auxiliares
       LEFT JOIN tab_cnae_categorias cat ON cat.cod_divisao = LEFT(REPLACE(REPLACE(REPLACE(v.cnae_fiscal_principal, '.', ''), '/', ''), '-', ''), 2)
       LEFT JOIN d_motivos_situacao_cadastral mc ON mc.mot_codigo = v.motivo_situacao_cadastral
       LEFT JOIN d_situacoes_cadastrais sc ON sc.sit_codigo = v.situacao_inscricao
+      LEFT JOIN municipios m ON m.mun_codigo = v.municipio_codigo
+      LEFT JOIN (
+        SELECT
+          dva_cnpj,
+          1 AS tem_divida,
+          SUM(dva_valor_consolidado) AS valor_total
+        FROM divida_ativa
+        GROUP BY dva_cnpj
+      ) div ON REPLACE(REPLACE(REPLACE(div.dva_cnpj, '.', ''), '/', ''), '-', '') = REPLACE(REPLACE(REPLACE(v.cnpj_completo, '.', ''), '/', ''), '-', '')
 
       WHERE ${filtros.join(' AND ')}
-      ORDER BY v.razao_social 
+      ORDER BY v.razao_social
       `;
 
     console.log(`[BUSCA] Consultando ${tabelaAlvo}...`);
@@ -554,28 +578,28 @@ app.get('/buscar', async function (req, res) {
 
     // QUERY SQL COMPLETA (Usando crases para evitar erro de sintaxe)
     const sql = `
-      SELECT 
-        v.cnpj_completo, 
-        v.razao_social, 
-        v.nome_fantasia, 
-        v.logradouro, 
-        v.numero, 
-        v.complemento, 
-        v.bairro, 
-        v.cep, 
-        v.municipio_codigo, 
-        v.municipio_nome, 
+      SELECT
+        v.cnpj_completo,
+        v.razao_social,
+        v.nome_fantasia,
+        v.logradouro,
+        v.numero,
+        v.complemento,
+        v.bairro,
+        v.cep,
+        v.municipio_codigo,
+        v.municipio_nome,
         v.uf,
-        
-        v.ddd_1, 
-        v.telefone_1, 
-        v.ddd_2, 
-        v.telefone_2, 
+
+        v.ddd_1,
+        v.telefone_1,
+        v.ddd_2,
+        v.telefone_2,
         v.email AS correio_eletronico,
-        
-        v.cnae_fiscal_principal, 
+
+        v.cnae_fiscal_principal,
         v.situacao_inscricao AS situacao_cadastral,
-        
+
         v.motivo_situacao_cadastral,
         mc.mot_descricao AS motivo_situacao_cadastral_descricao,
         sc.sit_descricao AS situacao_cadastral_descricao,
@@ -583,17 +607,41 @@ app.get('/buscar', async function (req, res) {
         cat.ind_grande_setor,
         cat.nom_segmento_mercado,
 
+        v.porte_empresa,
+        v.capital_social,
+
         v.latitude AS lat,
-        v.longitude AS lon
+        v.longitude AS lon,
+
+        -- Campos de localização geográfica (região, mesorregião, microrregião)
+        COALESCE(m.regiao_nome, '') AS regiao_nome,
+        COALESCE(m.regiao_sigla, '') AS regiao_sigla,
+        COALESCE(m.mesorregiao_nome, '') AS mesorregiao_nome,
+        COALESCE(m.mesorregiao_id, '') AS mesorregiao_id,
+        COALESCE(m.microrregiao_nome, '') AS microrregiao_nome,
+        COALESCE(m.microrregiao_id, '') AS microrregiao_id,
+
+        -- Campos de dívida ativa
+        COALESCE(div.tem_divida, 0) AS tem_divida_ativa,
+        COALESCE(div.valor_total, 0) AS valor_divida_ativa_total
 
       FROM ${tabelaAlvo} v
       -- Joins auxiliares
       LEFT JOIN tab_cnae_categorias cat ON cat.cod_divisao = LEFT(REPLACE(REPLACE(REPLACE(v.cnae_fiscal_principal, '.', ''), '/', ''), '-', ''), 2)
       LEFT JOIN d_motivos_situacao_cadastral mc ON mc.mot_codigo = v.motivo_situacao_cadastral
       LEFT JOIN d_situacoes_cadastrais sc ON sc.sit_codigo = v.situacao_inscricao
+      LEFT JOIN municipios m ON m.mun_codigo = v.municipio_codigo
+      LEFT JOIN (
+        SELECT
+          dva_cnpj,
+          1 AS tem_divida,
+          SUM(dva_valor_consolidado) AS valor_total
+        FROM divida_ativa
+        GROUP BY dva_cnpj
+      ) div ON REPLACE(REPLACE(REPLACE(div.dva_cnpj, '.', ''), '/', ''), '-', '') = REPLACE(REPLACE(REPLACE(v.cnpj_completo, '.', ''), '/', ''), '-', '')
 
       WHERE ${filtros.join(' AND ')}
-      ORDER BY v.razao_social 
+      ORDER BY v.razao_social
       LIMIT 2000
     `;
 
