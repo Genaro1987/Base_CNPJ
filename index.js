@@ -304,7 +304,7 @@ app.get('/buscar', async function (req, res) {
       LEFT JOIN d_motivos_situacao_cadastral mc ON mc.mot_codigo = v.motivo_situacao_cadastral
       LEFT JOIN d_situacoes_cadastrais sc      ON sc.sit_codigo = v.situacao_inscricao
       LEFT JOIN (
-        SELECT dva_cnpj AS cnpj, 1 AS tem_divida_ativa, SUM(dva_valor_consolidado) AS valor_divida_ativa_total
+        SELECT dva_cnpj AS cnpj, SUM(dva_valor_consolidado) AS valor_divida_ativa_total
         FROM divida_ativa
         GROUP BY dva_cnpj
       ) da ON da.cnpj = v.cnpj_completo
