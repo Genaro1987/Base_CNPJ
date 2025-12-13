@@ -130,6 +130,8 @@ function chunkArray(array, tamanho) {
 // -----------------------------------------------------
 app.get('/buscar', async function (req, res) {
   let conn;
+  let sql = '';
+  let params = [];
   try {
     aplicarCabecalhosSemCache(res);
 
@@ -162,7 +164,7 @@ app.get('/buscar', async function (req, res) {
       return res.status(404).json({ erro: `View não encontrada para ${uf}. Execute o script SQL de atualização.` });
     }
 
-    const params = [];
+    params = [];
     const filtros = ['v.uf = ?']; // Alias v para a view
     params.push(uf);
 
@@ -213,6 +215,7 @@ app.get('/buscar', async function (req, res) {
     }
 
     // QUERY SQL COMPLETA (Usando Template String com crases `)
+    // Ajuste para a aba Estatística: garantir joins corretos e campos territoriais completos
     const sql = `
       SELECT
         v.cnpj_completo,
@@ -223,53 +226,61 @@ app.get('/buscar', async function (req, res) {
         v.complemento,
         v.bairro,
         v.cep,
-        v.municipio_codigo,
-        v.municipio_nome,
-        v.uf,
-        dim.regiao_sigla,
-        dim.regiao_nome,
-        dim.microrregiao_id,
-        dim.microrregiao_nome,
-        dim.mesorregiao_id,
-        dim.mesorregiao_nome,
 
+        -- Contatos
         v.ddd_1,
         v.telefone_1,
         v.ddd_2,
         v.telefone_2,
         v.email AS correio_eletronico,
 
+        -- Identificação territorial
+        v.uf,
+        v.municipio_codigo,
+        v.municipio_nome,
+        dim.ibge_id              AS municipio_ibge_id,
+        dim.regiao_sigla         AS regiao_sigla,
+        dim.regiao_nome          AS regiao_nome,
+        dim.mesorregiao_id       AS mesorregiao_id,
+        dim.mesorregiao_nome     AS mesorregiao_nome,
+        dim.microrregiao_id      AS microrregiao_id,
+        dim.microrregiao_nome    AS microrregiao_nome,
+
+        -- Segmentação de negócio
         v.cnae_fiscal_principal,
+        cat.ind_grande_setor,
+        cat.nom_segmento_mercado,
+
+        -- Porte / situação / capital
         v.porte_empresa,
         v.situacao_inscricao AS situacao_cadastral,
+        sc.sit_descricao         AS situacao_cadastral_descricao,
         v.capital_social,
 
         v.motivo_situacao_cadastral,
         mc.mot_descricao AS motivo_situacao_cadastral_descricao,
-        sc.sit_descricao AS situacao_cadastral_descricao,
-
-        cat.ind_grande_setor,
-        cat.nom_segmento_mercado,
 
         v.latitude AS lat,
         v.longitude AS lon,
 
-        CASE
-          WHEN da.valor_divida_ativa_total IS NOT NULL AND da.valor_divida_ativa_total > 0
-            THEN 1
-          ELSE 0
-        END AS tem_divida_ativa,
+        -- Dívida ativa consolidada para a aba Estatística
+        COALESCE(da.tem_divida_ativa, 0) AS tem_divida_ativa,
         COALESCE(da.valor_divida_ativa_total, 0) AS valor_divida_ativa_total
 
       FROM ${tabelaAlvo} v
-      -- Joins auxiliares
-      LEFT JOIN tab_cnae_categorias cat ON cat.cod_divisao = LEFT(REPLACE(REPLACE(REPLACE(v.cnae_fiscal_principal, '.', ''), '/', ''), '-', ''), 2)
+      -- Joins auxiliares (mantidos em ordem para compatibilidade com a aba Estatística)
+      LEFT JOIN dim_ibge_municipios dim
+             ON dim.uf_sigla = v.uf
+            AND UPPER(REPLACE(dim.nome, "'", '')) = v.municipio_nome
+      LEFT JOIN tab_cnae_categorias cat ON cat.cod_divisao = LEFT(
+        REPLACE(REPLACE(REPLACE(v.cnae_fiscal_principal, '.', ''), '/', ''), '-', ''), 2
+      )
       LEFT JOIN d_motivos_situacao_cadastral mc ON mc.mot_codigo = v.motivo_situacao_cadastral
-      LEFT JOIN d_situacoes_cadastrais sc ON sc.sit_codigo = v.situacao_inscricao
-      LEFT JOIN dim_ibge_municipios dim ON dim.municipio_codigo = v.municipio_codigo
+      LEFT JOIN d_situacoes_cadastrais sc      ON sc.sit_codigo = v.situacao_inscricao
       LEFT JOIN (
         SELECT
           dva_cnpj AS cnpj,
+          1 AS tem_divida_ativa,
           SUM(dva_valor_consolidado) AS valor_divida_ativa_total
         FROM divida_ativa
         GROUP BY dva_cnpj
@@ -279,15 +290,20 @@ app.get('/buscar', async function (req, res) {
       ORDER BY v.razao_social
       `;
 
+    console.log('[BUSCAR-SQL-GERADO]', sql);
+    console.log('[BUSCAR-PARAMS]', params);
     console.log(`[BUSCA] Consultando ${tabelaAlvo}...`);
+
     const [rows] = await conn.query(sql, params);
-    console.log(`[BUSCA] Retornou ${rows.length} registros.`);
-    
+
+    console.log(`[BUSCAR] Retornou ${rows.length} registros.`);
     res.json(rows);
 
   } catch (err) {
-    console.error('>>> ERRO SQL NA BUSCA:', err.sqlMessage || err.message);
-    res.status(500).json({ erro: 'Erro ao buscar dados', detalhes: err.message });
+    console.error('[BUSCAR-ERRO-SQL]', err);
+    console.error('[BUSCAR-SQL-GERADO]', err && err.sql ? err.sql : sql);
+    console.error('[BUSCAR-PARAMS]', err && err.parameters ? err.parameters : params);
+    res.status(500).json({ erro: 'Erro ao buscar dados' });
   } finally {
     if (conn) conn.release();
   }
