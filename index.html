@@ -1497,8 +1497,7 @@
   class="tab-panel"
   id="tab-estatistica"
   role="tabpanel"
-  aria-labelledby="tab-btn-estatistica"
->
+  aria-labelledby="tab-btn-estatistica">
   <div class="subtab-bar" id="estat-subtabs">
     <button class="subtab active" data-subtab="estat-sub-filtros">Filtros</button>
     <button class="subtab" data-subtab="estat-sub-municipios">Estatísticas Municipais</button>
@@ -1770,16 +1769,16 @@
                   <th>CNAE Fiscal principal</th>
                   <th>Qtd. empresas</th>
                   <th>% da amostra</th>
+                  <th>Observação</th>
                 </tr>
               </thead>
               <tbody id="estat-seg-cnae-corpo">
                 <tr class="empty-state">
-                  <td colspan="3">Sem dados para exibir.</td>
+                  <td colspan="4">Sem dados para exibir.</td>
                 </tr>
               </tbody>
             </table>
           </div>
-          <canvas id="chart-seg-cnae" height="120"></canvas>
         </div>
       </section>
 
@@ -1793,16 +1792,16 @@
                   <th>Grande setor</th>
                   <th>Qtd. empresas</th>
                   <th>% da amostra</th>
+                  <th>Observação</th>
                 </tr>
               </thead>
               <tbody id="estat-seg-setor-corpo">
                 <tr class="empty-state">
-                  <td colspan="3">Sem dados para exibir.</td>
+                  <td colspan="4">Sem dados para exibir.</td>
                 </tr>
               </tbody>
             </table>
           </div>
-          <canvas id="chart-seg-setor" height="120"></canvas>
         </div>
       </section>
 
@@ -1816,16 +1815,16 @@
                   <th>Segmento de mercado</th>
                   <th>Qtd. empresas</th>
                   <th>% da amostra</th>
+                  <th>Observação</th>
                 </tr>
               </thead>
               <tbody id="estat-seg-segmento-corpo">
                 <tr class="empty-state">
-                  <td colspan="3">Sem dados para exibir.</td>
+                  <td colspan="4">Sem dados para exibir.</td>
                 </tr>
               </tbody>
             </table>
           </div>
-          <canvas id="chart-seg-segmento" height="120"></canvas>
         </div>
       </section>
 
@@ -1839,16 +1838,16 @@
                   <th>Porte da empresa</th>
                   <th>Qtd. empresas</th>
                   <th>% da amostra</th>
+                  <th>Observação</th>
                 </tr>
               </thead>
               <tbody id="estat-seg-porte-corpo">
                 <tr class="empty-state">
-                  <td colspan="3">Sem dados para exibir.</td>
+                  <td colspan="4">Sem dados para exibir.</td>
                 </tr>
               </tbody>
             </table>
           </div>
-          <canvas id="chart-seg-porte" height="120"></canvas>
         </div>
       </section>
 
@@ -1862,16 +1861,16 @@
                   <th>Situação cadastral</th>
                   <th>Qtd. empresas</th>
                   <th>% da amostra</th>
+                  <th>Observação</th>
                 </tr>
               </thead>
               <tbody id="estat-seg-situacao-corpo">
                 <tr class="empty-state">
-                  <td colspan="3">Sem dados para exibir.</td>
+                  <td colspan="4">Sem dados para exibir.</td>
                 </tr>
               </tbody>
             </table>
           </div>
-          <canvas id="chart-seg-situacao" height="120"></canvas>
         </div>
       </section>
     </section>
@@ -3024,6 +3023,7 @@ const rotaCheckNaoAtendidos = document.getElementById('rota-check-nao-atendidos'
         console.error('[ROTA-ERROR]', label, error, extra || {});
     }
     let cacheCategoriasMercado = {};
+    let categoriasMercadoCarregadas = false;
     let selectedMunicipios = new Map();
     let selectedCnaes = new Map();
     let cnaeDebounce;
@@ -6992,14 +6992,25 @@ if (coberturaExportarBtn) {
 
 
 // [NOVO] Função para carregar categorias ao iniciar
-    async function carregarCategoriasMercado() {
+    async function carregarCategoriasMercado(opcoes = {}) {
+      const { forcar = false } = opcoes;
+      if (categoriasMercadoCarregadas && !forcar) return;
+      if (!setorSelect || !segmentoSelect) {
+        console.warn('[Categorias] Elementos de Setor/Segmento não encontrados na página atual.');
+        return;
+      }
+
       try {
+        segmentoSelect.disabled = true;
+        setorSelect.innerHTML = '<option value="">Carregando setores...</option>';
+        segmentoSelect.innerHTML = '<option value="">Carregando…</option>';
+
         const response = await apiFetch('/categorias-mercado');
         if (!response.ok) throw new Error('Falha ao carregar categorias');
-        
+
         cacheCategoriasMercado = await response.json();
-        
-        // Popula o combo de Setores
+        categoriasMercadoCarregadas = true;
+
         setorSelect.innerHTML = '<option value="">Todos os Setores</option>';
         Object.keys(cacheCategoriasMercado).sort().forEach(setor => {
           const option = document.createElement('option');
@@ -7007,7 +7018,11 @@ if (coberturaExportarBtn) {
           option.textContent = setor;
           setorSelect.appendChild(option);
         });
+
+        segmentoSelect.disabled = true;
+        segmentoSelect.innerHTML = '<option value="">Selecione um Setor primeiro</option>';
       } catch (err) {
+        categoriasMercadoCarregadas = false;
         console.error('Erro ao carregar categorias:', err);
       }
     }
@@ -10155,37 +10170,47 @@ function calcularDistanciaSimples(lat1, lon1, lat2, lon2) {
     };
   }
 
-  function preencherTabelaResumoEstatistica(tbody, lista, maxLinhas) {
-    if (!tbody) return;
-
-    tbody.innerHTML = '';
-
-    if (!lista || !lista.length) {
-      tbody.innerHTML = `
-        <tr class="empty-state">
-          <td colspan="3">Nenhuma empresa na amostra atual.</td>
-        </tr>
-      `;
-      return;
+    function gerarObservacaoSegmento(item) {
+      if (!item || typeof item.perc !== 'number') return '—';
+      if (item.perc >= 20) return 'Alta representatividade';
+      if (item.perc >= 10) return 'Relevante no mix';
+      if (item.perc > 0) return 'Segmento nicho';
+      return '—';
     }
 
-    const limite = typeof maxLinhas === 'number' ? maxLinhas : 20;
-    const top = lista.slice(0, limite);
+    function preencherTabelaResumoEstatistica(tbody, lista, maxLinhas) {
+      if (!tbody) return;
 
-    const fragment = document.createDocumentFragment();
+      tbody.innerHTML = '';
 
-    top.forEach(item => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td>${item.categoria}</td>
-        <td>${item.qtd.toLocaleString('pt-BR')}</td>
-        <td>${item.perc.toFixed(1).replace('.', ',')}%</td>
-      `;
-      fragment.appendChild(tr);
-    });
+      if (!lista || !lista.length) {
+        tbody.innerHTML = `
+          <tr class="empty-state">
+            <td colspan="4">Nenhuma empresa na amostra atual.</td>
+          </tr>
+        `;
+        return;
+      }
 
-    tbody.appendChild(fragment);
-  }
+      const limite = typeof maxLinhas === 'number' ? maxLinhas : 20;
+      const top = lista.slice(0, limite);
+
+      const fragment = document.createDocumentFragment();
+
+      top.forEach(item => {
+        const tr = document.createElement('tr');
+        const observacao = item.observacao || gerarObservacaoSegmento(item);
+        tr.innerHTML = `
+          <td>${item.categoria}</td>
+          <td>${item.qtd.toLocaleString('pt-BR')}</td>
+          <td>${item.perc.toFixed(1).replace('.', ',')}%</td>
+          <td>${observacao}</td>
+        `;
+        fragment.appendChild(tr);
+      });
+
+      tbody.appendChild(fragment);
+    }
 
   function atualizarResumoSegmento(resumoId, lista, total) {
     const alvo = document.getElementById(resumoId);
@@ -10204,103 +10229,53 @@ function calcularDistanciaSimples(lat1, lon1, lat2, lon2) {
     alvo.textContent = `${total.toLocaleString('pt-BR')} empresas na amostra • Top 3: ${top3}`;
   }
 
-  const chartsSegmentos = {
-    cnae: null,
-    setor: null,
-    segmento: null,
-    porte: null,
-    situacao: null
-  };
-
-  function renderizarGraficoSegmento(chave, canvasId, dados) {
-    const canvas = document.getElementById(canvasId);
-    if (!canvas || typeof Chart === 'undefined') return;
-
-    if (chartsSegmentos[chave]) {
-      chartsSegmentos[chave].destroy();
-    }
-
-    const lista = (dados || []).slice(0, 10);
-    const labels = lista.map(item => item.categoria);
-    const valores = lista.map(item => item.qtd);
-
-    chartsSegmentos[chave] = new Chart(canvas, {
-      type: 'bar',
-      data: {
-        labels,
-        datasets: [
-          {
-            label: 'Empresas',
-            data: valores,
-            backgroundColor: '#b02232'
-          }
-        ]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: {
-          x: { ticks: { maxRotation: 45, minRotation: 0 } },
-          y: { beginAtZero: true }
+    function renderizarQuebrasNegocioEstatistica(quebras) {
+      const total = (quebras && quebras.total) || 0;
+      const configuracoes = [
+        {
+          chave: 'cnae',
+          dados: quebras?.porCnae || [],
+          tbodyId: 'estat-seg-cnae-corpo',
+          resumoId: 'estat-seg-cnae-resumo',
+          limite: 20
+        },
+        {
+          chave: 'setor',
+          dados: quebras?.porSetor || [],
+          tbodyId: 'estat-seg-setor-corpo',
+          resumoId: 'estat-seg-setor-resumo',
+          limite: 20
+        },
+        {
+          chave: 'segmento',
+          dados: quebras?.porSegmento || [],
+          tbodyId: 'estat-seg-segmento-corpo',
+          resumoId: 'estat-seg-segmento-resumo',
+          limite: 20
+        },
+        {
+          chave: 'porte',
+          dados: quebras?.porPorte || [],
+          tbodyId: 'estat-seg-porte-corpo',
+          resumoId: 'estat-seg-porte-resumo',
+          limite: 10
+        },
+        {
+          chave: 'situacao',
+          dados: quebras?.porSituacao || [],
+          tbodyId: 'estat-seg-situacao-corpo',
+          resumoId: 'estat-seg-situacao-resumo',
+          limite: 10
         }
-      }
-    });
-  }
+      ];
 
-  function renderizarQuebrasNegocioEstatistica(quebras) {
-    const total = (quebras && quebras.total) || 0;
-    const configuracoes = [
-      {
-        chave: 'cnae',
-        dados: quebras?.porCnae || [],
-        tbodyId: 'estat-seg-cnae-corpo',
-        resumoId: 'estat-seg-cnae-resumo',
-        canvasId: 'chart-seg-cnae',
-        limite: 20
-      },
-      {
-        chave: 'setor',
-        dados: quebras?.porSetor || [],
-        tbodyId: 'estat-seg-setor-corpo',
-        resumoId: 'estat-seg-setor-resumo',
-        canvasId: 'chart-seg-setor',
-        limite: 20
-      },
-      {
-        chave: 'segmento',
-        dados: quebras?.porSegmento || [],
-        tbodyId: 'estat-seg-segmento-corpo',
-        resumoId: 'estat-seg-segmento-resumo',
-        canvasId: 'chart-seg-segmento',
-        limite: 20
-      },
-      {
-        chave: 'porte',
-        dados: quebras?.porPorte || [],
-        tbodyId: 'estat-seg-porte-corpo',
-        resumoId: 'estat-seg-porte-resumo',
-        canvasId: 'chart-seg-porte',
-        limite: 10
-      },
-      {
-        chave: 'situacao',
-        dados: quebras?.porSituacao || [],
-        tbodyId: 'estat-seg-situacao-corpo',
-        resumoId: 'estat-seg-situacao-resumo',
-        canvasId: 'chart-seg-situacao',
-        limite: 10
-      }
-    ];
-
-    configuracoes.forEach(cfg => {
-      const lista = cfg.dados || [];
-      const tbody = document.getElementById(cfg.tbodyId);
-      preencherTabelaResumoEstatistica(tbody, lista, cfg.limite);
-      atualizarResumoSegmento(cfg.resumoId, lista, total);
-      renderizarGraficoSegmento(cfg.chave, cfg.canvasId, lista);
-    });
-  }
+      configuracoes.forEach(cfg => {
+        const lista = cfg.dados || [];
+        const tbody = document.getElementById(cfg.tbodyId);
+        preencherTabelaResumoEstatistica(tbody, lista, cfg.limite);
+        atualizarResumoSegmento(cfg.resumoId, lista, total);
+      });
+    }
 
   function limparTabelaEstatistica(mensagem) {
     if (!estatisticaCorpo) return;
@@ -10907,6 +10882,9 @@ function calcularDistanciaSimples(lat1, lon1, lat2, lon2) {
       // Garante que os filtros sejam inicializados na primeira vez que a aba é aberta
       if (!estatisticaEstruturasFiltrosCriadas) {
         inicializarEstruturasFiltrosEstatistica();
+      }
+      if (!categoriasMercadoCarregadas) {
+        carregarCategoriasMercado().catch(err => console.error('Erro ao recarregar categorias na aba Estatística:', err));
       }
       atualizarAbaEstatistica();
     });
