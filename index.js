@@ -250,12 +250,12 @@ app.get('/buscar', async function (req, res) {
         v.longitude AS lon,
 
         -- Campos de localização geográfica (região, mesorregião, microrregião)
-        COALESCE(m.regiao_nome, '') AS regiao_nome,
-        COALESCE(m.regiao_sigla, '') AS regiao_sigla,
-        COALESCE(m.mesorregiao_nome, '') AS mesorregiao_nome,
-        COALESCE(m.mesorregiao_id, '') AS mesorregiao_id,
-        COALESCE(m.microrregiao_nome, '') AS microrregiao_nome,
-        COALESCE(m.microrregiao_id, '') AS microrregiao_id,
+        COALESCE(m.mun_regiao_nome, '') AS regiao_nome,
+        COALESCE(m.mun_regiao_sigla, '') AS regiao_sigla,
+        COALESCE(dim.mesorregiao_nome, '') AS mesorregiao_nome,
+        COALESCE(dim.mesorregiao_id, '') AS mesorregiao_id,
+        COALESCE(dim.microrregiao_nome, '') AS microrregiao_nome,
+        COALESCE(dim.microrregiao_id, '') AS microrregiao_id,
 
         -- Campos de dívida ativa
         COALESCE(div.tem_divida, 0) AS tem_divida_ativa,
@@ -267,6 +267,7 @@ app.get('/buscar', async function (req, res) {
       LEFT JOIN d_motivos_situacao_cadastral mc ON mc.mot_codigo = v.motivo_situacao_cadastral
       LEFT JOIN d_situacoes_cadastrais sc ON sc.sit_codigo = v.situacao_inscricao
       LEFT JOIN municipios m ON m.mun_codigo = v.municipio_codigo
+      LEFT JOIN dim_ibge_municipios dim ON dim.ibge_id = v.municipio_codigo
       LEFT JOIN (
         SELECT
           dva_cnpj,
@@ -614,12 +615,12 @@ app.get('/buscar', async function (req, res) {
         v.longitude AS lon,
 
         -- Campos de localização geográfica (região, mesorregião, microrregião)
-        COALESCE(m.regiao_nome, '') AS regiao_nome,
-        COALESCE(m.regiao_sigla, '') AS regiao_sigla,
-        COALESCE(m.mesorregiao_nome, '') AS mesorregiao_nome,
-        COALESCE(m.mesorregiao_id, '') AS mesorregiao_id,
-        COALESCE(m.microrregiao_nome, '') AS microrregiao_nome,
-        COALESCE(m.microrregiao_id, '') AS microrregiao_id,
+        COALESCE(m.mun_regiao_nome, '') AS regiao_nome,
+        COALESCE(m.mun_regiao_sigla, '') AS regiao_sigla,
+        COALESCE(dim.mesorregiao_nome, '') AS mesorregiao_nome,
+        COALESCE(dim.mesorregiao_id, '') AS mesorregiao_id,
+        COALESCE(dim.microrregiao_nome, '') AS microrregiao_nome,
+        COALESCE(dim.microrregiao_id, '') AS microrregiao_id,
 
         -- Campos de dívida ativa
         COALESCE(div.tem_divida, 0) AS tem_divida_ativa,
@@ -631,6 +632,7 @@ app.get('/buscar', async function (req, res) {
       LEFT JOIN d_motivos_situacao_cadastral mc ON mc.mot_codigo = v.motivo_situacao_cadastral
       LEFT JOIN d_situacoes_cadastrais sc ON sc.sit_codigo = v.situacao_inscricao
       LEFT JOIN municipios m ON m.mun_codigo = v.municipio_codigo
+      LEFT JOIN dim_ibge_municipios dim ON dim.ibge_id = v.municipio_codigo
       LEFT JOIN (
         SELECT
           dva_cnpj,
