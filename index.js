@@ -337,19 +337,23 @@ app.get('/buscar', async function (req, res) {
       return;
     }
 
-    // Nome da View
-    const tabelaAlvo = `v_empresas_ativas_${uf.toLowerCase()}`;
+    // Determina qual view usar baseado na situação cadastral
+    const situacoes = normalizarListaEntrada(req.query.situacao);
+    const ehEmpresaAtiva = situacoes.length === 0 || situacoes.includes('02') || situacoes.includes('2');
+    const tipoView = ehEmpresaAtiva ? 'ativas' : 'inativas';
+    const tabelaAlvo = `v_empresas_${tipoView}_${uf.toLowerCase()}`;
+
+    console.log(`[BUSCA] Tipo de empresa: ${tipoView} (situações: ${situacoes.join(', ') || 'todas'})`);
 
     // Filtros recebidos do Frontend
     const termoBusca = typeof req.query.q === 'string' ? req.query.q.trim() : '';
     const filtroSetor = req.query.setor ? String(req.query.setor).trim() : '';
     const filtroSegmento = req.query.segmento ? String(req.query.segmento).trim() : '';
-    
+
     const municipios = normalizarListaEntrada(req.query.municipio);
     const cnaesFiltro = normalizarListaEntrada(req.query.cnae).map(function (c) {
       return c.replace(/\D+/g, '');
     }).filter(function (c) { return c !== ''; });
-    const situacoes = normalizarListaEntrada(req.query.situacao);
     const portes = normalizarListaEntrada(req.query.porte);
 
     conn = await pool.getConnection();
