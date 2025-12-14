@@ -38,14 +38,18 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 // -----------------------------------------------------
 // POOL DE CONEXAO COM MYSQL LOCAL
 // -----------------------------------------------------
-const pool = mysql.createPool({
-  host: '127.0.0.1',
-  port: 3307,
-  user: 'root',
-  password: 'Germ@7525',
-  database: 'base_cnpj',
+const dbConfig = {
+  host: process.env.DB_HOST || '127.0.0.1',
+  port: parseInt(process.env.DB_PORT || '3306', 10),
+  user: process.env.DB_USER || 'root',
+  password: process.env.DB_PASSWORD || 'Germ@7525',
+  database: process.env.DB_NAME || 'base_cnpj',
   connectionLimit: 5
-});
+};
+
+console.log(`[DB CONFIG] Tentando conectar em ${dbConfig.host}:${dbConfig.port} (database: ${dbConfig.database})`);
+
+const pool = mysql.createPool(dbConfig);
 
 // -----------------------------------------------------
 // HELPERS
