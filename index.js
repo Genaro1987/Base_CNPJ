@@ -38,14 +38,21 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 // -----------------------------------------------------
 // POOL DE CONEXAO COM MYSQL LOCAL
 // -----------------------------------------------------
-const pool = mysql.createPool({
-  host: '127.0.0.1',
-  port: 3307,
-  user: 'root',
-  password: 'Germ@7525',
-  database: 'base_cnpj',
-  connectionLimit: 5
-});
+const dbConfig = {
+  host: process.env.DB_HOST || '127.0.0.1',
+  port: parseInt(process.env.DB_PORT || '3306', 10),
+  user: process.env.DB_USER || 'root',
+  password: process.env.DB_PASSWORD || 'Germ@7525',
+  database: process.env.DB_NAME || 'base_cnpj',
+  connectionLimit: 5,
+  connectTimeout: 10000,
+  acquireTimeout: 10000,
+  timeout: 30000
+};
+
+console.log(`[DB CONFIG] Tentando conectar em ${dbConfig.host}:${dbConfig.port} (database: ${dbConfig.database})`);
+
+const pool = mysql.createPool(dbConfig);
 
 // -----------------------------------------------------
 // HELPERS
@@ -333,19 +340,23 @@ app.get('/buscar', async function (req, res) {
       return;
     }
 
-    // Nome da View
-    const tabelaAlvo = `v_empresas_ativas_${uf.toLowerCase()}`;
+    // Determina qual view usar baseado na situação cadastral
+    const situacoes = normalizarListaEntrada(req.query.situacao);
+    const ehEmpresaAtiva = situacoes.length === 0 || situacoes.includes('02') || situacoes.includes('2');
+    const tipoView = ehEmpresaAtiva ? 'ativas' : 'inativas';
+    const tabelaAlvo = `v_empresas_${tipoView}_${uf.toLowerCase()}`;
+
+    console.log(`[BUSCA] Tipo de empresa: ${tipoView} (situações: ${situacoes.join(', ') || 'todas'})`);
 
     // Filtros recebidos do Frontend
     const termoBusca = typeof req.query.q === 'string' ? req.query.q.trim() : '';
     const filtroSetor = req.query.setor ? String(req.query.setor).trim() : '';
     const filtroSegmento = req.query.segmento ? String(req.query.segmento).trim() : '';
-    
+
     const municipios = normalizarListaEntrada(req.query.municipio);
     const cnaesFiltro = normalizarListaEntrada(req.query.cnae).map(function (c) {
       return c.replace(/\D+/g, '');
     }).filter(function (c) { return c !== ''; });
-    const situacoes = normalizarListaEntrada(req.query.situacao);
     const portes = normalizarListaEntrada(req.query.porte);
 
     conn = await pool.getConnection();
@@ -478,18 +489,31 @@ app.get('/buscar', async function (req, res) {
 
     console.log(`[BUSCA] ========== INICIO DA PESQUISA ==========`);
     console.log(`[BUSCA] UF: ${uf}`);
+    console.log(`[BUSCA] Tipo: ${tipoView}`);
     console.log(`[BUSCA] Tabela: ${tabelaAlvo}`);
     console.log(`[BUSCA] Filtros aplicados:`, filtros);
     console.log(`[BUSCA] Parâmetros:`, params);
-    console.log(`[BUSCA] Consultando ${tabelaAlvo}...`);
+    console.log(`[BUSCA] SQL (primeiras 500 chars):`, sql.substring(0, 500));
+    console.log(`[BUSCA] Iniciando query com timeout de 30s...`);
 
     const inicio = Date.now();
-    const [rows] = await conn.query(sql, params);
+
+    // Implementa timeout manual para a query
+    const queryPromise = conn.query(sql, params);
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Query timeout após 30 segundos')), 30000)
+    );
+
+    const [rows] = await Promise.race([queryPromise, timeoutPromise]);
     const tempo = Date.now() - inicio;
 
     console.log(`[BUSCA] ✓ Query executada em ${tempo}ms`);
     console.log(`[BUSCA] ✓ Retornou ${rows.length} registros.`);
-    console.log(`[BUSCA] ✓ Primeiro registro:`, rows.length > 0 ? rows[0] : 'NENHUM');
+    if (rows.length > 0) {
+      console.log(`[BUSCA] ✓ Primeiro registro (campos):`, Object.keys(rows[0]));
+    } else {
+      console.log(`[BUSCA] ⚠️ NENHUM registro encontrado!`);
+    }
     console.log(`[BUSCA] ✓ Enviando JSON response...`);
 
     res.json(rows);
