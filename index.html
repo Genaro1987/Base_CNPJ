@@ -2431,25 +2431,31 @@ const UF_LIST = [
       ])
     );
 
+    // =====================================================
+    // 🔌 CONFIGURAÇÃO DE CONEXÃO (PONTE HÍBRIDA)
+    // =====================================================
     const API_BASE_URL = (() => {
-      const configurado = typeof window !== 'undefined' && typeof window.API_BASE_URL === 'string'
-        ? window.API_BASE_URL.trim()
-        : '';
-      if (configurado) {
-        return configurado.replace(/\/+$/, '');
-      }
+      const hostname = window.location.hostname;
 
-      const { protocol, hostname, port } = window.location;
-      if (protocol === 'file:') {
+      console.log(`[GF2_DEBUG] Site rodando em: ${hostname}`);
+
+      // CENÁRIO 1: Você acessando pelo arquivo ou localhost
+      if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '') {
+        console.log("🔧 Modo Local Detectado.");
         return 'http://localhost:3000';
       }
 
-      if ((hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1') && port && port !== '3000') {
-        return `${protocol}//${hostname}:3000`;
+      // CENÁRIO 2: Acessando pelo site oficial (forratti.com.br)
+      // Forçamos ele a tentar conectar no seu computador
+      if (hostname.includes('forratti.com.br') || hostname.includes('github.io')) {
+         console.log("☁️ Modo Nuvem Detectado -> Tentando conectar ao Localhost.");
+         // ATENÇÃO: Seu navegador pode bloquear isso por segurança (Cadeado / Conteúdo Misto).
+         // Se não funcionar, avise que explico como desbloquear o navegador.
+         return 'http://localhost:3000';
       }
 
-      const portaNormalizada = port ? `:${port}` : '';
-      return `${protocol}//${hostname}${portaNormalizada}`;
+      // Fallback (Padrão)
+      return 'http://localhost:3000';
     })();
 
     // =====================================================
@@ -5651,8 +5657,18 @@ function atualizarResultados(dados) {
           signal: controladorAtual.signal,
           cache: 'no-store'
         });
-        if (!response.ok) throw new Error('Erro ao buscar dados');
+// --- INÍCIO DA ALTERAÇÃO: Diagnóstico de Erro GF2 ---
+        if (!response.ok) {
+            // Tenta capturar a mensagem técnica enviada pelo servidor (Node.js)
+            const erroServidor = await response.json();
+            console.error("🔴 ERRO CRÍTICO NO BACKEND:", erroServidor);
+            
+            // Força o erro aparecer na tela com os detalhes técnicos (ex: nome da coluna errada)
+            throw new Error(erroServidor.detalhes || erroServidor.erro || 'Erro desconhecido no servidor');
+        }
+        
         const dados = await response.json();
+        // --- FIM DA ALTERAÇÃO ---
         atualizarResultados(dados);
       } catch (error) {
         if (error.name === 'AbortError') {
