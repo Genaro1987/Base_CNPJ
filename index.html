@@ -5769,6 +5769,13 @@ function atualizarResultados(dados) {
       currentFetchController = new AbortController();
       const controladorAtual = currentFetchController;
       cancelarBtn.disabled = false;
+      const tempoLimiteMs = 30000;
+      const timeoutId = setTimeout(() => {
+        if (controladorAtual === currentFetchController) {
+          controladorAtual.abort();
+          console.warn('[FRONTEND] Tempo limite excedido ao aguardar resposta da API.');
+        }
+      }, tempoLimiteMs);
 
       try {
         const url = construirUrlApi('/buscar', params);
@@ -5817,12 +5824,16 @@ function atualizarResultados(dados) {
           }
         } else {
           console.error(error);
-          limparResultados('Ocorreu um erro ao buscar os dados. Tente novamente.');
+          const mensagemErro = error.name === 'AbortError'
+            ? `Não recebemos resposta da API em ${tempoLimiteMs / 1000} segundos. Verifique se o backend está rodando em http://localhost:3000.`
+            : 'Ocorreu um erro ao buscar os dados. Tente novamente.';
+          limparResultados(mensagemErro);
         }
       } finally {
         if (currentFetchController === controladorAtual) {
           cancelarBtn.disabled = true;
           currentFetchController = null;
+          clearTimeout(timeoutId);
         }
       }
     }
