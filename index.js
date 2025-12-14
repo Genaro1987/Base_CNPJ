@@ -452,8 +452,8 @@ app.get('/buscar', async function (req, res) {
         COALESCE(dim.microrregiao_id, '') AS microrregiao_id,
 
         -- Campos de dívida ativa
-        COALESCE(div.tem_divida, 0) AS tem_divida_ativa,
-        COALESCE(div.valor_total, 0) AS valor_divida_ativa_total
+        COALESCE(tb_div.tem_divida, 0) AS tem_divida_ativa,
+        COALESCE(tb_div.valor_total, 0) AS valor_divida_ativa_total
 
       FROM ${tabelaAlvo} v
       -- Joins auxiliares
