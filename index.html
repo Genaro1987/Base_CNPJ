@@ -3805,8 +3805,17 @@ function normalizarUf(valor) {
     }
 
     function renderizarTabela(dados) {
+      console.log('[renderizarTabela] ========== INICIO ==========');
+      console.log('[renderizarTabela] Recebeu', dados.length, 'registros');
+      console.log('[renderizarTabela] Limpando tabela...');
+
       resultadosCorpo.innerHTML = '';
-      dados.forEach(linha => {
+
+      console.log('[renderizarTabela] Renderizando', dados.length, 'linhas...');
+      dados.forEach((linha, index) => {
+        if (index === 0) {
+          console.log('[renderizarTabela] Primeira linha:', linha);
+        }
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td>${linha.cnpj_completo || ''}</td>
@@ -3822,21 +3831,38 @@ function normalizarUf(valor) {
         `;
         resultadosCorpo.append(tr);
       });
+
+      console.log('[renderizarTabela] ✓ Tabela renderizada com', resultadosCorpo.children.length, 'linhas');
+      console.log('[renderizarTabela] ========== FIM ==========');
     }
 
 function atualizarResultados(dados) {
+      console.log('[atualizarResultados] ========== INICIO ==========');
+      console.log('[atualizarResultados] Tipo de dados:', typeof dados, Array.isArray(dados) ? 'É array' : 'Não é array');
+      console.log('[atualizarResultados] Quantidade de itens:', Array.isArray(dados) ? dados.length : 'N/A');
+
       if (!Array.isArray(dados) || dados.length === 0) {
+        console.log('[atualizarResultados] ⚠️ Nenhum registro encontrado');
         limparResultados('Nenhum registro encontrado com os filtros informados.');
         return;
       }
 
+      console.log('[atualizarResultados] ✓ Atualizando resultados com', dados.length, 'registros');
       ultimoResultado = dados;
       exportarBtn.disabled = false;
       atualizarStatusCount(dados.length);
       statusMessage.textContent = 'Resultados atualizados com sucesso.';
+
+      console.log('[atualizarResultados] Chamando renderizarTabela()...');
       renderizarTabela(dados);
+
+      console.log('[atualizarResultados] Chamando atualizarEstadoBotaoPesquisa()...');
       atualizarEstadoBotaoPesquisa();
+
+      console.log('[atualizarResultados] Chamando prepararCoberturaParaNovaPesquisa()...');
       prepararCoberturaParaNovaPesquisa(true);
+
+      console.log('[atualizarResultados] Chamando atualizarAbaCoberturaDisponibilidade()...');
       atualizarAbaCoberturaDisponibilidade();
       
       // Atualiza o Mapa
@@ -5747,23 +5773,35 @@ function atualizarResultados(dados) {
       try {
         const url = construirUrlApi('/buscar', params);
         url.searchParams.set('_', Date.now());
+
+        console.log('[FRONTEND] ========== INICIANDO PESQUISA ==========');
+        console.log('[FRONTEND] URL:', url.toString());
+        console.log('[FRONTEND] Fazendo fetch...');
+
         const response = await fetch(url.toString(), {
           signal: controladorAtual.signal,
           cache: 'no-store'
         });
-// --- INÍCIO DA ALTERAÇÃO: Diagnóstico de Erro GF2 ---
+
+        console.log('[FRONTEND] ✓ Response recebida');
+        console.log('[FRONTEND] Status:', response.status, response.statusText);
+        console.log('[FRONTEND] Headers:', Object.fromEntries(response.headers.entries()));
+
         if (!response.ok) {
-            // Tenta capturar a mensagem técnica enviada pelo servidor (Node.js)
             const erroServidor = await response.json();
             console.error("🔴 ERRO CRÍTICO NO BACKEND:", erroServidor);
-            
-            // Força o erro aparecer na tela com os detalhes técnicos (ex: nome da coluna errada)
             throw new Error(erroServidor.detalhes || erroServidor.erro || 'Erro desconhecido no servidor');
         }
-        
+
+        console.log('[FRONTEND] Parseando JSON...');
         const dados = await response.json();
-        // --- FIM DA ALTERAÇÃO ---
+        console.log('[FRONTEND] ✓ Dados recebidos:', Array.isArray(dados) ? `Array com ${dados.length} itens` : typeof dados);
+        console.log('[FRONTEND] Primeiro item:', dados[0]);
+        console.log('[FRONTEND] Chamando atualizarResultados()...');
+
         atualizarResultados(dados);
+
+        console.log('[FRONTEND] ========== PESQUISA CONCLUÍDA ==========');
       } catch (error) {
         if (error.name === 'AbortError') {
           if (currentFetchController && currentFetchController !== controladorAtual) {
