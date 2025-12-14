@@ -476,11 +476,25 @@ app.get('/buscar', async function (req, res) {
       LIMIT 2000
     `;
 
+    console.log(`[BUSCA] ========== INICIO DA PESQUISA ==========`);
+    console.log(`[BUSCA] UF: ${uf}`);
+    console.log(`[BUSCA] Tabela: ${tabelaAlvo}`);
+    console.log(`[BUSCA] Filtros aplicados:`, filtros);
+    console.log(`[BUSCA] Parâmetros:`, params);
     console.log(`[BUSCA] Consultando ${tabelaAlvo}...`);
-    const [rows] = await conn.query(sql, params); // A linha que estava dando erro era aqui
-    console.log(`[BUSCA] Retornou ${rows.length} registros.`);
-    
+
+    const inicio = Date.now();
+    const [rows] = await conn.query(sql, params);
+    const tempo = Date.now() - inicio;
+
+    console.log(`[BUSCA] ✓ Query executada em ${tempo}ms`);
+    console.log(`[BUSCA] ✓ Retornou ${rows.length} registros.`);
+    console.log(`[BUSCA] ✓ Primeiro registro:`, rows.length > 0 ? rows[0] : 'NENHUM');
+    console.log(`[BUSCA] ✓ Enviando JSON response...`);
+
     res.json(rows);
+
+    console.log(`[BUSCA] ========== FIM DA PESQUISA ==========`);
 
   } catch (err) {
     console.error('>>> ERRO SQL NA BUSCA:', err.sqlMessage || err.message);
