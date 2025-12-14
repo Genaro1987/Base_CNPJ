@@ -258,8 +258,8 @@ app.get('/buscar', async function (req, res) {
         COALESCE(dim.microrregiao_id, '') AS microrregiao_id,
 
         -- Campos de dívida ativa
-        COALESCE(div.tem_divida, 0) AS tem_divida_ativa,
-        COALESCE(div.valor_total, 0) AS valor_divida_ativa_total
+        COALESCE(tb_div.tem_divida, 0) AS tem_divida_ativa,
+        COALESCE(tb_div.valor_total, 0) AS valor_divida_ativa_total
 
       FROM ${tabelaAlvo} v
       -- Joins auxiliares
@@ -275,7 +275,7 @@ app.get('/buscar', async function (req, res) {
           SUM(dva_valor_consolidado) AS valor_total
         FROM divida_ativa
         GROUP BY dva_cnpj
-      ) div ON REPLACE(REPLACE(REPLACE(div.dva_cnpj, '.', ''), '/', ''), '-', '') = REPLACE(REPLACE(REPLACE(v.cnpj_completo, '.', ''), '/', ''), '-', '')
+      ) tb_div ON REPLACE(REPLACE(REPLACE(tb_div.dva_cnpj, '.', ''), '/', ''), '-', '') = REPLACE(REPLACE(REPLACE(v.cnpj_completo, '.', ''), '/', ''), '-', '')
 
       WHERE ${filtros.join(' AND ')}
       ORDER BY v.razao_social
@@ -640,7 +640,7 @@ app.get('/buscar', async function (req, res) {
           SUM(dva_valor_consolidado) AS valor_total
         FROM divida_ativa
         GROUP BY dva_cnpj
-      ) div ON REPLACE(REPLACE(REPLACE(div.dva_cnpj, '.', ''), '/', ''), '-', '') = REPLACE(REPLACE(REPLACE(v.cnpj_completo, '.', ''), '/', ''), '-', '')
+      ) tb_div ON REPLACE(REPLACE(REPLACE(tb_div.dva_cnpj, '.', ''), '/', ''), '-', '') = REPLACE(REPLACE(REPLACE(v.cnpj_completo, '.', ''), '/', ''), '-', '')
 
       WHERE ${filtros.join(' AND ')}
       ORDER BY v.razao_social
@@ -1293,4 +1293,3 @@ app.use(express.static(__dirname));
 app.listen(port, function () {
   console.log('API rodando em http://localhost:' + port);
 });
-
