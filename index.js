@@ -417,7 +417,7 @@ app.get('/buscar', async function (req, res) {
       params.push.apply(params, portes);
     }
 
-    // QUERY SQL COMPLETA (Usando crases para evitar erro de sintaxe)
+    // QUERY SQL SIMPLIFICADA (sem JOINs pesados para performance)
     const sql = `
       SELECT
         v.cnpj_completo,
@@ -442,45 +442,33 @@ app.get('/buscar', async function (req, res) {
         v.situacao_inscricao AS situacao_cadastral,
 
         v.motivo_situacao_cadastral,
-        mc.mot_descricao AS motivo_situacao_cadastral_descricao,
-        sc.sit_descricao AS situacao_cadastral_descricao,
-
-        cat.ind_grande_setor,
-        cat.nom_segmento_mercado,
-
         v.porte_empresa,
         v.capital_social,
 
         v.latitude AS lat,
         v.longitude AS lon,
 
-        -- Campos de localização geográfica (região, mesorregião, microrregião)
-        COALESCE(m.mun_regiao_nome, '') AS regiao_nome,
-        COALESCE(m.mun_regiao_sigla, '') AS regiao_sigla,
-        COALESCE(dim.mesorregiao_nome, '') AS mesorregiao_nome,
-        COALESCE(dim.mesorregiao_id, '') AS mesorregiao_id,
-        COALESCE(dim.microrregiao_nome, '') AS microrregiao_nome,
-        COALESCE(dim.microrregiao_id, '') AS microrregiao_id,
+        -- Campos descritivos com LEFT JOINs leves
+        COALESCE(mc.mot_descricao, '') AS motivo_situacao_cadastral_descricao,
+        COALESCE(sc.sit_descricao, '') AS situacao_cadastral_descricao,
+        COALESCE(cat.ind_grande_setor, '') AS ind_grande_setor,
+        COALESCE(cat.nom_segmento_mercado, '') AS nom_segmento_mercado,
 
-        -- Campos de dívida ativa
-        COALESCE(tb_div.tem_divida, 0) AS tem_divida_ativa,
-        COALESCE(tb_div.valor_total, 0) AS valor_divida_ativa_total
+        -- Valores padrão para campos que exigiam JOINs pesados
+        '' AS regiao_nome,
+        '' AS regiao_sigla,
+        '' AS mesorregiao_nome,
+        '' AS mesorregiao_id,
+        '' AS microrregiao_nome,
+        '' AS microrregiao_id,
+        0 AS tem_divida_ativa,
+        0 AS valor_divida_ativa_total
 
       FROM ${tabelaAlvo} v
-      -- Joins auxiliares
-      LEFT JOIN tab_cnae_categorias cat ON cat.cod_divisao = LEFT(REPLACE(REPLACE(REPLACE(v.cnae_fiscal_principal, '.', ''), '/', ''), '-', ''), 2)
+      -- Apenas JOINs leves em tabelas pequenas
       LEFT JOIN d_motivos_situacao_cadastral mc ON mc.mot_codigo = v.motivo_situacao_cadastral
       LEFT JOIN d_situacoes_cadastrais sc ON sc.sit_codigo = v.situacao_inscricao
-      LEFT JOIN municipios m ON m.mun_codigo = v.municipio_codigo
-      LEFT JOIN dim_ibge_municipios dim ON dim.ibge_id = v.municipio_codigo
-      LEFT JOIN (
-        SELECT
-          dva_cnpj,
-          1 AS tem_divida,
-          SUM(dva_valor_consolidado) AS valor_total
-        FROM divida_ativa
-        GROUP BY dva_cnpj
-      ) tb_div ON REPLACE(REPLACE(REPLACE(tb_div.dva_cnpj, '.', ''), '/', ''), '-', '') = REPLACE(REPLACE(REPLACE(v.cnpj_completo, '.', ''), '/', ''), '-', '')
+      LEFT JOIN tab_cnae_categorias cat ON cat.cod_divisao = LEFT(REPLACE(REPLACE(REPLACE(v.cnae_fiscal_principal, '.', ''), '/', ''), '-', ''), 2)
 
       WHERE ${filtros.join(' AND ')}
       ORDER BY v.razao_social
