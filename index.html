@@ -1029,13 +1029,25 @@
     }
 
     #estat-sub-segmentos .segmentos-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      gap: 1rem;
+      display: block;
     }
 
     #estat-sub-segmentos .segmentos-card {
       height: 100%;
+      max-width: 960px;
+      margin: 0 auto;
+    }
+
+    #segmento-subtabs {
+      margin-top: 1rem;
+    }
+
+    .segmento-subtab-panel {
+      display: none;
+    }
+
+    .segmento-subtab-panel.active {
+      display: block;
     }
 
     #estat-sub-segmentos .table-wrapper,
@@ -1706,104 +1718,122 @@
         Consolidado apenas sobre a amostra atual da Lista CNPJ (após filtros aplicados).
       </p>
 
+      <div class="subtab-bar" id="segmento-subtabs">
+        <button class="subtab active" data-seg-subtab="segmento-tab-cnae">CNAE Fiscal Principal</button>
+        <button class="subtab" data-seg-subtab="segmento-tab-setor">Grande Setor</button>
+        <button class="subtab" data-seg-subtab="segmento-tab-segmento">Segmento de Mercado</button>
+        <button class="subtab" data-seg-subtab="segmento-tab-porte">Porte da Empresa</button>
+        <button class="subtab" data-seg-subtab="segmento-tab-situacao">Situação Cadastral</button>
+      </div>
+
       <div class="segmentos-grid">
-        <div class="card segmentos-card">
-          <h3>CNAE Fiscal Principal</h3>
-          <div class="table-wrapper mini">
-            <table>
-              <thead>
-                <tr>
-                  <th>CNAE</th>
-                  <th>Qtd. empresas</th>
-                  <th>% da amostra</th>
-                </tr>
-              </thead>
-              <tbody id="estat-seg-cnae-corpo">
-                <tr class="empty-state">
-                  <td colspan="3">Sem dados para exibir.</td>
-                </tr>
-              </tbody>
-            </table>
+        <div class="segmento-subtab-panel active" id="segmento-tab-cnae" aria-label="CNAE Fiscal Principal">
+          <div class="card segmentos-card">
+            <h3>CNAE Fiscal Principal</h3>
+            <div class="table-wrapper mini">
+              <table>
+                <thead>
+                  <tr>
+                    <th>CNAE</th>
+                    <th>Qtd. empresas</th>
+                    <th>% da amostra</th>
+                  </tr>
+                </thead>
+                <tbody id="estat-seg-cnae-corpo">
+                  <tr class="empty-state">
+                    <td colspan="3">Sem dados para exibir.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
 
-        <div class="card segmentos-card">
-          <h3>Grande Setor</h3>
-          <div class="table-wrapper mini">
-            <table>
-              <thead>
-                <tr>
-                  <th>Setor</th>
-                  <th>Qtd. empresas</th>
-                  <th>% da amostra</th>
-                </tr>
-              </thead>
-              <tbody id="estat-seg-setor-corpo">
-                <tr class="empty-state">
-                  <td colspan="3">Sem dados para exibir.</td>
-                </tr>
-              </tbody>
-            </table>
+        <div class="segmento-subtab-panel" id="segmento-tab-setor" aria-label="Grande Setor">
+          <div class="card segmentos-card">
+            <h3>Grande Setor</h3>
+            <div class="table-wrapper mini">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Setor</th>
+                    <th>Qtd. empresas</th>
+                    <th>% da amostra</th>
+                  </tr>
+                </thead>
+                <tbody id="estat-seg-setor-corpo">
+                  <tr class="empty-state">
+                    <td colspan="3">Sem dados para exibir.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
 
-        <div class="card segmentos-card">
-          <h3>Segmento de Mercado</h3>
-          <div class="table-wrapper mini">
-            <table>
-              <thead>
-                <tr>
-                  <th>Segmento</th>
-                  <th>Qtd. empresas</th>
-                  <th>% da amostra</th>
-                </tr>
-              </thead>
-              <tbody id="estat-seg-segmento-corpo">
-                <tr class="empty-state">
-                  <td colspan="3">Sem dados para exibir.</td>
-                </tr>
-              </tbody>
-            </table>
+        <div class="segmento-subtab-panel" id="segmento-tab-segmento" aria-label="Segmento de Mercado">
+          <div class="card segmentos-card">
+            <h3>Segmento de Mercado</h3>
+            <div class="table-wrapper mini">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Segmento</th>
+                    <th>Qtd. empresas</th>
+                    <th>% da amostra</th>
+                  </tr>
+                </thead>
+                <tbody id="estat-seg-segmento-corpo">
+                  <tr class="empty-state">
+                    <td colspan="3">Sem dados para exibir.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
 
-        <div class="card segmentos-card">
-          <h3>Porte da Empresa</h3>
-          <div class="table-wrapper mini">
-            <table>
-              <thead>
-                <tr>
-                  <th>Porte</th>
-                  <th>Qtd. empresas</th>
-                  <th>% da amostra</th>
-                </tr>
-              </thead>
-              <tbody id="estat-seg-porte-corpo">
-                <tr class="empty-state">
-                  <td colspan="3">Sem dados para exibir.</td>
-                </tr>
-              </tbody>
-            </table>
+        <div class="segmento-subtab-panel" id="segmento-tab-porte" aria-label="Porte da Empresa">
+          <div class="card segmentos-card">
+            <h3>Porte da Empresa</h3>
+            <div class="table-wrapper mini">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Porte</th>
+                    <th>Qtd. empresas</th>
+                    <th>% da amostra</th>
+                  </tr>
+                </thead>
+                <tbody id="estat-seg-porte-corpo">
+                  <tr class="empty-state">
+                    <td colspan="3">Sem dados para exibir.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
 
-        <div class="card segmentos-card">
-          <h3>Situação Cadastral</h3>
-          <div class="table-wrapper mini">
-            <table>
-              <thead>
-                <tr>
-                  <th>Situação</th>
-                  <th>Qtd. empresas</th>
-                  <th>% da amostra</th>
-                </tr>
-              </thead>
-              <tbody id="estat-seg-situacao-corpo">
-                <tr class="empty-state">
-                  <td colspan="3">Sem dados para exibir.</td>
-                </tr>
-              </tbody>
-            </table>
+        <div class="segmento-subtab-panel" id="segmento-tab-situacao" aria-label="Situação Cadastral">
+          <div class="card segmentos-card">
+            <h3>Situação Cadastral</h3>
+            <div class="table-wrapper mini">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Situação</th>
+                    <th>Qtd. empresas</th>
+                    <th>% da amostra</th>
+                  </tr>
+                </thead>
+                <tbody id="estat-seg-situacao-corpo">
+                  <tr class="empty-state">
+                    <td colspan="3">Sem dados para exibir.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>
@@ -9700,6 +9730,27 @@ function calcularDistanciaSimples(lat1, lon1, lat2, lon2) {
     btn.addEventListener('click', () => {
       const alvo = btn.getAttribute('data-subtab');
       ativarSubtabEstatistica(alvo);
+    });
+  });
+
+  const segmentoSubtabButtons = document.querySelectorAll('#segmento-subtabs .subtab');
+  const segmentoSubtabPanels = document.querySelectorAll('.segmento-subtab-panel');
+
+  function ativarSubtabSegmento(idPainel) {
+    segmentoSubtabButtons.forEach(btn => {
+      const alvo = btn.getAttribute('data-seg-subtab');
+      btn.classList.toggle('active', alvo === idPainel);
+    });
+
+    segmentoSubtabPanels.forEach(painel => {
+      painel.classList.toggle('active', painel.id === idPainel);
+    });
+  }
+
+  segmentoSubtabButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const alvo = btn.getAttribute('data-seg-subtab');
+      ativarSubtabSegmento(alvo);
     });
   });
 
