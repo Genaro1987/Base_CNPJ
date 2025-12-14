@@ -44,7 +44,10 @@ const dbConfig = {
   user: process.env.DB_USER || 'root',
   password: process.env.DB_PASSWORD || 'Germ@7525',
   database: process.env.DB_NAME || 'base_cnpj',
-  connectionLimit: 5
+  connectionLimit: 5,
+  connectTimeout: 10000,
+  acquireTimeout: 10000,
+  timeout: 30000
 };
 
 console.log(`[DB CONFIG] Tentando conectar em ${dbConfig.host}:${dbConfig.port} (database: ${dbConfig.database})`);
@@ -486,18 +489,31 @@ app.get('/buscar', async function (req, res) {
 
     console.log(`[BUSCA] ========== INICIO DA PESQUISA ==========`);
     console.log(`[BUSCA] UF: ${uf}`);
+    console.log(`[BUSCA] Tipo: ${tipoView}`);
     console.log(`[BUSCA] Tabela: ${tabelaAlvo}`);
     console.log(`[BUSCA] Filtros aplicados:`, filtros);
     console.log(`[BUSCA] Parâmetros:`, params);
-    console.log(`[BUSCA] Consultando ${tabelaAlvo}...`);
+    console.log(`[BUSCA] SQL (primeiras 500 chars):`, sql.substring(0, 500));
+    console.log(`[BUSCA] Iniciando query com timeout de 30s...`);
 
     const inicio = Date.now();
-    const [rows] = await conn.query(sql, params);
+
+    // Implementa timeout manual para a query
+    const queryPromise = conn.query(sql, params);
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Query timeout após 30 segundos')), 30000)
+    );
+
+    const [rows] = await Promise.race([queryPromise, timeoutPromise]);
     const tempo = Date.now() - inicio;
 
     console.log(`[BUSCA] ✓ Query executada em ${tempo}ms`);
     console.log(`[BUSCA] ✓ Retornou ${rows.length} registros.`);
-    console.log(`[BUSCA] ✓ Primeiro registro:`, rows.length > 0 ? rows[0] : 'NENHUM');
+    if (rows.length > 0) {
+      console.log(`[BUSCA] ✓ Primeiro registro (campos):`, Object.keys(rows[0]));
+    } else {
+      console.log(`[BUSCA] ⚠️ NENHUM registro encontrado!`);
+    }
     console.log(`[BUSCA] ✓ Enviando JSON response...`);
 
     res.json(rows);
