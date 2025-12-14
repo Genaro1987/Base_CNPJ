@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.jsdelivr.net https://nominatim.openstreetmap.org; style-src 'self' 'unsafe-inline' https://unpkg.com https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' http://localhost:3000 https://nominatim.openstreetmap.org;">
   <title>GF2 • Sistema de Pesquisa de Empresas</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -990,6 +991,15 @@
       display: block;
     }
 
+    .segmentos-subtab-panel {
+      display: none;
+      margin-top: 1.5rem;
+    }
+
+    .segmentos-subtab-panel.active {
+      display: block;
+    }
+
     /* Layout dos cards dentro da aba Estatística */
     #tab-estatistica .card {
       margin-bottom: 1rem;
@@ -1748,6 +1758,7 @@
             </div>
           </div>
         </div>
+      </section>
 
         <div class="segmento-subtab-panel" id="segmento-tab-setor" aria-label="Grande Setor">
           <div class="card segmentos-card">
@@ -1770,6 +1781,7 @@
             </div>
           </div>
         </div>
+      </section>
 
         <div class="segmento-subtab-panel" id="segmento-tab-segmento" aria-label="Segmento de Mercado">
           <div class="card segmentos-card">
@@ -1792,6 +1804,7 @@
             </div>
           </div>
         </div>
+      </section>
 
         <div class="segmento-subtab-panel" id="segmento-tab-porte" aria-label="Porte da Empresa">
           <div class="card segmentos-card">
@@ -1814,6 +1827,7 @@
             </div>
           </div>
         </div>
+      </section>
 
         <div class="segmento-subtab-panel" id="segmento-tab-situacao" aria-label="Situação Cadastral">
           <div class="card segmentos-card">
@@ -1836,7 +1850,7 @@
             </div>
           </div>
         </div>
-      </div>
+      </section>
     </section>
   </section>
 
