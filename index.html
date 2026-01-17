@@ -1209,6 +1209,139 @@
       display: block;
     }
 
+    .financeiro-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 1.5rem;
+    }
+
+    .financeiro-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      font-size: 0.85rem;
+      color: var(--gf2-muted);
+    }
+
+    .financeiro-meta strong {
+      color: var(--gf2-red-dark);
+    }
+
+    .financeiro-tree {
+      border: 1px dashed var(--gf2-border);
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      background: #f8fafc;
+    }
+
+    .financeiro-tree ul {
+      list-style: none;
+      margin: 0.5rem 0 0;
+      padding-left: 1.25rem;
+      display: grid;
+      gap: 0.5rem;
+    }
+
+    .financeiro-node {
+      display: flex;
+      flex-direction: column;
+      gap: 0.45rem;
+      padding: 0.75rem 1rem;
+      border-radius: 12px;
+      border: 1px solid var(--gf2-border);
+      background: var(--gf2-white);
+      box-shadow: 0 6px 14px rgba(17, 24, 39, 0.05);
+    }
+
+    .financeiro-node-header {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .financeiro-node-title {
+      font-weight: 600;
+      color: var(--gf2-text);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .financeiro-node-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      font-size: 0.82rem;
+      color: var(--gf2-muted);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      padding: 0.2rem 0.6rem;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      border: 1px solid transparent;
+    }
+
+    .badge--ativa {
+      background: #ecfdf3;
+      color: #15803d;
+      border-color: #bbf7d0;
+    }
+
+    .badge--inativa {
+      background: #fef2f2;
+      color: #b91c1c;
+      border-color: #fecdd3;
+    }
+
+    .badge--analitica {
+      background: #eff6ff;
+      color: #1d4ed8;
+      border-color: #bfdbfe;
+    }
+
+    .badge--sintetica {
+      background: #fef9c3;
+      color: #92400e;
+      border-color: #fde68a;
+    }
+
+    .badge--dre {
+      background: #ede9fe;
+      color: #6d28d9;
+      border-color: #ddd6fe;
+    }
+
+    .toggle-field {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.65rem 0.85rem;
+      border-radius: 12px;
+      border: 1px solid var(--gf2-border);
+      background: var(--gf2-neutral);
+    }
+
+    .toggle-field input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--gf2-red);
+    }
+
+    .helper-inline {
+      font-size: 0.78rem;
+      color: var(--gf2-muted);
+    }
+
     @media (max-width: 768px) {
       header {
         padding: 1.25rem 1.5rem;
@@ -1335,6 +1468,17 @@
       data-tab="divida"
     >
       Dívida Ativa
+    </button>
+
+    <button
+      class="tab"
+      role="tab"
+      aria-selected="false"
+      aria-controls="tab-financeiro"
+      id="tab-btn-financeiro"
+      data-tab="financeiro"
+    >
+      Financeiro
     </button>
 
     <button
@@ -2008,6 +2152,116 @@
               <tr class="empty-state"><td colspan="5">Aguardando comando...</td></tr>
             </tbody>
           </table>
+        </div>
+      </section>
+    </section>
+
+    <section class="tab-panel" id="tab-financeiro" role="tabpanel" aria-labelledby="tab-btn-financeiro">
+      <section class="card" aria-labelledby="plano-contas-titulo">
+        <div class="card-header-row">
+          <div>
+            <h2 id="plano-contas-titulo">Cadastro do plano de contas</h2>
+            <p class="helper-text">Cadastre o plano de contas oficial que será utilizado no módulo financeiro.</p>
+          </div>
+          <div class="financeiro-meta" aria-live="polite">
+            <span>Total: <strong id="plano-total">0</strong></span>
+            <span>Ativas: <strong id="plano-ativas">0</strong></span>
+          </div>
+        </div>
+
+        <form id="plano-contas-form">
+          <div class="field-row">
+            <div>
+              <label for="plano-nivel">Nível *</label>
+              <select id="plano-nivel" required></select>
+              <p class="helper-text">Utilize o nível para organizar a hierarquia da conta.</p>
+            </div>
+            <div>
+              <label for="plano-descricao">Descrição *</label>
+              <input type="text" id="plano-descricao" placeholder="Ex: Receitas de serviços" required>
+              <p class="helper-text">Informe a descrição clara da conta.</p>
+            </div>
+            <div>
+              <label for="plano-conta-pai">Conta superior</label>
+              <select id="plano-conta-pai">
+                <option value="">Sem conta superior</option>
+              </select>
+              <p class="helper-text">Opcional. Selecione a conta acima para montar a árvore.</p>
+            </div>
+          </div>
+
+          <div class="field-row">
+            <div>
+              <label for="plano-tipo">Tipo de conta *</label>
+              <select id="plano-tipo" required>
+                <option value="Sintética">Sintética</option>
+                <option value="Analítica">Analítica</option>
+              </select>
+              <p class="helper-text">Apenas contas analíticas recebem lançamento.</p>
+            </div>
+            <div>
+              <label for="plano-natureza">Natureza *</label>
+              <select id="plano-natureza" required>
+                <option value="Receita">Receita</option>
+                <option value="Despesa">Despesa</option>
+              </select>
+            </div>
+            <div>
+              <label for="plano-dre-conta">Conta do DRE vinculada *</label>
+              <select id="plano-dre-conta" required></select>
+              <p class="helper-text">Selecione a linha do DRE que representa esta conta.</p>
+            </div>
+          </div>
+
+          <div class="field-row">
+            <div class="toggle-field">
+              <input type="checkbox" id="plano-considera-dre">
+              <div>
+                <label for="plano-considera-dre" style="margin-bottom:0;">Considerar no DRE</label>
+                <p class="helper-inline">Se marcado, é obrigatório relacionar a rubrica do DRE.</p>
+              </div>
+            </div>
+            <div>
+              <label for="plano-rubrica">Rubrica do DRE</label>
+              <select id="plano-rubrica" disabled>
+                <option value="">Selecione uma rubrica</option>
+              </select>
+            </div>
+            <div>
+              <label for="plano-status">Status *</label>
+              <select id="plano-status" required>
+                <option value="Ativa">Ativa</option>
+                <option value="Inativa">Inativa</option>
+              </select>
+              <p class="helper-text">Contas inativas não ficam disponíveis para lançamento.</p>
+            </div>
+          </div>
+
+          <div class="field-row">
+            <div>
+              <label for="plano-data-inclusao">Data de inclusão *</label>
+              <input type="date" id="plano-data-inclusao" required>
+              <p class="helper-text">Garante que não haja lançamentos anteriores à criação da conta.</p>
+            </div>
+          </div>
+
+          <div class="actions">
+            <button type="button" class="btn-ghost" id="plano-limpar-btn">Limpar dados</button>
+            <div class="actions-right">
+              <span id="plano-feedback" class="helper-text"></span>
+              <button type="submit" class="btn-primary" id="plano-salvar-btn">Salvar conta</button>
+            </div>
+          </div>
+        </form>
+      </section>
+
+      <section class="card" aria-labelledby="plano-arvore-titulo">
+        <div class="card-header-row">
+          <h2 id="plano-arvore-titulo">Árvore de contas financeiras</h2>
+          <span class="helper-text">Visualize e edite o plano de contas cadastrado.</span>
+        </div>
+        <div class="financeiro-tree" id="plano-tree">
+          <p class="helper-text" id="plano-arvore-vazia">Nenhuma conta cadastrada. Utilize o formulário acima para começar.</p>
         </div>
       </section>
     </section>
@@ -11439,6 +11693,331 @@ if(rotaImportFile) {
         reader.readAsText(file);
     });
 }
+
+// ===========================================================
+// [FRONTEND-GF2] MÓDULO FINANCEIRO - PLANO DE CONTAS
+// ===========================================================
+
+const planoForm = document.getElementById('plano-contas-form');
+const planoNivelSelect = document.getElementById('plano-nivel');
+const planoDescricaoInput = document.getElementById('plano-descricao');
+const planoTipoSelect = document.getElementById('plano-tipo');
+const planoNaturezaSelect = document.getElementById('plano-natureza');
+const planoDreContaSelect = document.getElementById('plano-dre-conta');
+const planoConsideraDre = document.getElementById('plano-considera-dre');
+const planoRubricaSelect = document.getElementById('plano-rubrica');
+const planoStatusSelect = document.getElementById('plano-status');
+const planoDataInclusaoInput = document.getElementById('plano-data-inclusao');
+const planoContaPaiSelect = document.getElementById('plano-conta-pai');
+const planoFeedback = document.getElementById('plano-feedback');
+const planoTotalLabel = document.getElementById('plano-total');
+const planoAtivasLabel = document.getElementById('plano-ativas');
+const planoTree = document.getElementById('plano-tree');
+const planoArvoreVazia = document.getElementById('plano-arvore-vazia');
+const planoLimparBtn = document.getElementById('plano-limpar-btn');
+const planoSalvarBtn = document.getElementById('plano-salvar-btn');
+
+const contasFinanceiras = [];
+let contaEmEdicao = null;
+let proximoContaId = 1;
+
+const contasDreDisponiveis = [
+  'Receita Bruta',
+  'Deduções da Receita',
+  'Receita Líquida',
+  'Custos Operacionais',
+  'Despesas Administrativas',
+  'Despesas Comerciais',
+  'Resultado Operacional',
+  'Receitas Financeiras',
+  'Despesas Financeiras',
+  'Resultado Líquido'
+];
+
+const rubricasDreDisponiveis = [
+  'Receita de Serviços',
+  'Receita de Produtos',
+  'Impostos sobre Vendas',
+  'Salários e Encargos',
+  'Energia e Utilidades',
+  'Marketing e Publicidade',
+  'Despesas Bancárias',
+  'Outras Receitas'
+];
+
+function popularSelectBasico(select, opcoes, valorInicial = '') {
+  if (!select) return;
+  select.innerHTML = '';
+  opcoes.forEach(opcao => {
+    const option = document.createElement('option');
+    option.value = opcao.valor;
+    option.textContent = opcao.label;
+    select.appendChild(option);
+  });
+  if (valorInicial) {
+    select.value = valorInicial;
+  }
+}
+
+function inicializarPlanoDeContas() {
+  if (!planoForm) return;
+
+  const niveis = Array.from({ length: 9 }, (_, i) => ({
+    valor: String(i + 1),
+    label: `Nível ${i + 1}`
+  }));
+  popularSelectBasico(planoNivelSelect, niveis);
+  popularSelectBasico(
+    planoDreContaSelect,
+    contasDreDisponiveis.map(item => ({ valor: item, label: item }))
+  );
+  popularSelectBasico(
+    planoRubricaSelect,
+    [{ valor: '', label: 'Selecione uma rubrica' }].concat(
+      rubricasDreDisponiveis.map(item => ({ valor: item, label: item }))
+    )
+  );
+
+  atualizarRubricaEstado();
+  atualizarSelectContaPai();
+  renderizarArvoreContas();
+}
+
+function atualizarRubricaEstado() {
+  if (!planoRubricaSelect || !planoConsideraDre) return;
+  const ativo = planoConsideraDre.checked;
+  planoRubricaSelect.disabled = !ativo;
+  planoRubricaSelect.required = ativo;
+  if (!ativo) {
+    planoRubricaSelect.value = '';
+  }
+}
+
+function atualizarSelectContaPai() {
+  if (!planoContaPaiSelect) return;
+  planoContaPaiSelect.innerHTML = '<option value="">Sem conta superior</option>';
+
+  const contasOrdenadas = [...contasFinanceiras].sort((a, b) => {
+    if (a.nivel !== b.nivel) return a.nivel - b.nivel;
+    return a.descricao.localeCompare(b.descricao);
+  });
+
+  contasOrdenadas.forEach(conta => {
+    if (contaEmEdicao && conta.id === contaEmEdicao.id) return;
+    const option = document.createElement('option');
+    option.value = conta.id;
+    option.textContent = `Nível ${conta.nivel} • ${conta.descricao}`;
+    planoContaPaiSelect.appendChild(option);
+  });
+}
+
+function limparFormularioPlano() {
+  if (!planoForm) return;
+  planoForm.reset();
+  contaEmEdicao = null;
+  atualizarRubricaEstado();
+  atualizarSelectContaPai();
+  if (planoSalvarBtn) planoSalvarBtn.textContent = 'Salvar conta';
+  if (planoFeedback) planoFeedback.textContent = '';
+}
+
+function renderizarArvoreContas() {
+  if (!planoTree) return;
+  planoTree.innerHTML = '';
+
+  if (!contasFinanceiras.length) {
+    if (planoArvoreVazia) {
+      planoTree.appendChild(planoArvoreVazia);
+      planoArvoreVazia.style.display = 'block';
+    }
+    atualizarResumoPlano();
+    return;
+  }
+
+  if (planoArvoreVazia) {
+    planoArvoreVazia.style.display = 'none';
+  }
+
+  const mapa = new Map();
+  contasFinanceiras.forEach(conta => {
+    mapa.set(conta.id, { ...conta, filhos: [] });
+  });
+
+  const raizes = [];
+  mapa.forEach(conta => {
+    if (conta.contaPaiId && mapa.has(conta.contaPaiId)) {
+      mapa.get(conta.contaPaiId).filhos.push(conta);
+    } else {
+      raizes.push(conta);
+    }
+  });
+
+  const listaRaiz = document.createElement('ul');
+  raizes
+    .sort((a, b) => a.nivel - b.nivel || a.descricao.localeCompare(b.descricao))
+    .forEach(conta => listaRaiz.appendChild(criarNoConta(conta)));
+
+  planoTree.appendChild(listaRaiz);
+  atualizarResumoPlano();
+}
+
+function criarNoConta(conta) {
+  const item = document.createElement('li');
+  const card = document.createElement('div');
+  card.className = 'financeiro-node';
+
+  const header = document.createElement('div');
+  header.className = 'financeiro-node-header';
+
+  const titulo = document.createElement('div');
+  titulo.className = 'financeiro-node-title';
+  titulo.textContent = `${conta.descricao}`;
+
+  const badges = document.createElement('div');
+  const statusBadge = document.createElement('span');
+  statusBadge.className = `badge ${conta.status === 'Ativa' ? 'badge--ativa' : 'badge--inativa'}`;
+  statusBadge.textContent = conta.status;
+  badges.appendChild(statusBadge);
+
+  const tipoBadge = document.createElement('span');
+  tipoBadge.className = `badge ${conta.tipo === 'Analítica' ? 'badge--analitica' : 'badge--sintetica'}`;
+  tipoBadge.textContent = conta.tipo;
+  badges.appendChild(tipoBadge);
+
+  if (conta.consideraDre) {
+    const dreBadge = document.createElement('span');
+    dreBadge.className = 'badge badge--dre';
+    dreBadge.textContent = 'DRE';
+    badges.appendChild(dreBadge);
+  }
+
+  const editarBtn = document.createElement('button');
+  editarBtn.type = 'button';
+  editarBtn.className = 'btn-chip';
+  editarBtn.textContent = 'Editar conta';
+  editarBtn.addEventListener('click', () => iniciarEdicaoConta(conta.id));
+
+  header.appendChild(titulo);
+  header.appendChild(badges);
+  header.appendChild(editarBtn);
+
+  const meta = document.createElement('div');
+  meta.className = 'financeiro-node-meta';
+
+  const dataFormatada = conta.dataInclusao
+    ? new Date(`${conta.dataInclusao}T00:00:00`).toLocaleDateString('pt-BR')
+    : '—';
+  meta.textContent = `Nível ${conta.nivel} • ${conta.natureza} • DRE: ${conta.contaDre} • Inclusão: ${dataFormatada}`;
+
+  if (conta.consideraDre && conta.rubricaDre) {
+    const rubrica = document.createElement('span');
+    rubrica.textContent = ` • Rubrica: ${conta.rubricaDre}`;
+    meta.appendChild(rubrica);
+  }
+
+  card.appendChild(header);
+  card.appendChild(meta);
+
+  if (conta.filhos && conta.filhos.length) {
+    const listaFilhos = document.createElement('ul');
+    conta.filhos
+      .sort((a, b) => a.nivel - b.nivel || a.descricao.localeCompare(b.descricao))
+      .forEach(filho => listaFilhos.appendChild(criarNoConta(filho)));
+    card.appendChild(listaFilhos);
+  }
+
+  item.appendChild(card);
+  return item;
+}
+
+function atualizarResumoPlano() {
+  if (planoTotalLabel) planoTotalLabel.textContent = String(contasFinanceiras.length);
+  if (planoAtivasLabel) {
+    const ativas = contasFinanceiras.filter(conta => conta.status === 'Ativa').length;
+    planoAtivasLabel.textContent = String(ativas);
+  }
+}
+
+function iniciarEdicaoConta(idConta) {
+  const conta = contasFinanceiras.find(item => item.id === idConta);
+  if (!conta) return;
+  contaEmEdicao = conta;
+  if (planoNivelSelect) planoNivelSelect.value = String(conta.nivel);
+  if (planoDescricaoInput) planoDescricaoInput.value = conta.descricao;
+  if (planoTipoSelect) planoTipoSelect.value = conta.tipo;
+  if (planoNaturezaSelect) planoNaturezaSelect.value = conta.natureza;
+  if (planoDreContaSelect) planoDreContaSelect.value = conta.contaDre;
+  if (planoConsideraDre) planoConsideraDre.checked = conta.consideraDre;
+  atualizarRubricaEstado();
+  if (planoRubricaSelect) planoRubricaSelect.value = conta.rubricaDre || '';
+  if (planoStatusSelect) planoStatusSelect.value = conta.status;
+  if (planoDataInclusaoInput) planoDataInclusaoInput.value = conta.dataInclusao;
+  atualizarSelectContaPai();
+  if (planoContaPaiSelect) planoContaPaiSelect.value = conta.contaPaiId ? String(conta.contaPaiId) : '';
+  if (planoSalvarBtn) planoSalvarBtn.textContent = 'Salvar alterações';
+  if (planoFeedback) planoFeedback.textContent = 'Editando conta selecionada.';
+}
+
+if (planoConsideraDre) {
+  planoConsideraDre.addEventListener('change', atualizarRubricaEstado);
+}
+
+if (planoForm) {
+  planoForm.addEventListener('submit', (event) => {
+    event.preventDefault();
+
+    const consideraDre = planoConsideraDre ? planoConsideraDre.checked : false;
+    if (consideraDre && !planoRubricaSelect.value) {
+      if (planoFeedback) {
+        planoFeedback.textContent = 'Selecione a rubrica do DRE para contas consideradas no DRE.';
+      }
+      return;
+    }
+
+    const dadosConta = {
+      id: contaEmEdicao ? contaEmEdicao.id : proximoContaId++,
+      nivel: Number(planoNivelSelect.value),
+      descricao: planoDescricaoInput.value.trim(),
+      tipo: planoTipoSelect.value,
+      natureza: planoNaturezaSelect.value,
+      contaDre: planoDreContaSelect.value,
+      consideraDre,
+      rubricaDre: consideraDre ? planoRubricaSelect.value : '',
+      status: planoStatusSelect.value,
+      dataInclusao: planoDataInclusaoInput.value,
+      contaPaiId: planoContaPaiSelect.value ? Number(planoContaPaiSelect.value) : null
+    };
+
+    if (!dadosConta.descricao) {
+      if (planoFeedback) planoFeedback.textContent = 'Informe a descrição da conta.';
+      return;
+    }
+
+    if (contaEmEdicao) {
+      const index = contasFinanceiras.findIndex(item => item.id === contaEmEdicao.id);
+      if (index >= 0) {
+        contasFinanceiras[index] = dadosConta;
+      }
+      if (planoFeedback) planoFeedback.textContent = 'Conta atualizada com sucesso.';
+    } else {
+      contasFinanceiras.push(dadosConta);
+      if (planoFeedback) planoFeedback.textContent = 'Conta cadastrada com sucesso.';
+    }
+
+    contaEmEdicao = null;
+    if (planoSalvarBtn) planoSalvarBtn.textContent = 'Salvar conta';
+    atualizarSelectContaPai();
+    renderizarArvoreContas();
+    planoForm.reset();
+    atualizarRubricaEstado();
+  });
+}
+
+if (planoLimparBtn) {
+  planoLimparBtn.addEventListener('click', limparFormularioPlano);
+}
+
+inicializarPlanoDeContas();
 
 </script>
 
